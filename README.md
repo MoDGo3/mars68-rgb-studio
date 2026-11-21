@@ -1,7 +1,22 @@
 # Mars68 RGB Studio
 
-Unofficial lighting controller for the **CAROTMAS Mars68 Pro Wireless** keyboard (USB).
-โปรแกรมคุมไฟคีย์บอร์ด CAROTMAS Mars68 Pro Wireless แบบไม่เป็นทางการ (ต่อสาย USB)
+Unofficial lighting controller for the **CAROTMAS Mars68** keyboard family (USB).
+โปรแกรมคุมไฟคีย์บอร์ดตระกูล CAROTMAS Mars68 แบบไม่เป็นทางการ (ต่อสาย USB)
+
+## Supported models / รุ่นที่รองรับ
+
+| Model | USB PID | Built-in effects | Status |
+|---|---|---|---|
+| Mars68 Pro Wireless | `0x5030` | ✅ 15 RGB + 4 reactive | ✅ Tested (firmware 302) |
+| Mars68 Wireless | `0x5030` | ✅ 15 RGB + 4 reactive | ⚠️ Untested |
+| Mars68 Pro | `0x5029` | ✅ 15 RGB + 4 reactive | ⚠️ Untested |
+| Mars68 | `0x5029` | ✅ 15 RGB + 4 reactive | ⚠️ Untested |
+| Mars68 SE | `0x5029` | ❌ none in the official app — custom/GIF only | ⚠️ Untested, may have no RGB |
+
+All Mars68 models share the same lighting protocol and per-key LED layout in the official driver; the model is told apart by its USB product name.
+Wireless (2.4G dongle) connections and other CAROTMAS lines (Mars75, Mer68) are **not** supported.
+If you own an untested model, please open an issue with what works and what doesn't.
+ทุกรุ่นใช้โปรโตคอลและผังไฟเดียวกัน — รุ่นที่ยังไม่ได้ทดสอบ ถ้าลองแล้วแจ้งผลใน Issues ได้
 
 It adds what the official app can't do / เพิ่มสิ่งที่แอปทางการทำไม่ได้:
 
@@ -38,7 +53,7 @@ Close the official CAROTMAS app first — both talking to the keyboard at once m
 
 - Per-key (custom / GIF) lighting updates about **8 times per second** — a firmware limit, measured on firmware 302.
   For smooth motion use the built-in RGB effects. — ไฟรายปุ่มอัปเดตได้ราว 8 ครั้ง/วินาที
-- USB only; the 2.4G dongle is not supported.
+- USB cable only; the 2.4G dongle is not supported.
 - Only lighting commands are ever sent (`0x87`, `0x8F`, `0x07`, `0x0C`); firmware, reset, keymap and macro commands are blocked in code.
 
 ## Disclaimer

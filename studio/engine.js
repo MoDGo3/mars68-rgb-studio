@@ -61,6 +61,23 @@
   const DIR_LABEL_EN = { up: "↑ Up", down: "↓ Down", left: "← Left", right: "→ Right", clockwise: "↻ Clockwise", counterclockwise: "↺ Counter-clockwise" };
   const MODE_CUSTOM = 13;
 
+  // ---------- รุ่นที่รองรับ (ตระกูล Mars68 — ไดรเวอร์ Zxt เดียวกัน, ผังไฟเดียวกัน) ----------
+  // แยกรุ่นจากชื่ออุปกรณ์ (productName) เพราะ Mars68 / Pro / SE ใช้ PID 0x5029 ร่วมกัน
+  // hwEffects: false = แอปทางการไม่มีเอฟเฟกต์ในตัวให้รุ่นนี้ (lightEffectList ว่าง)
+  const VID = 0x3151, USAGE_PAGE = 0xFFFF, USAGE = 0x02;
+  const MODELS = [
+    { id: "pro-wireless", name: "Mars68 Pro Wireless", pid: 0x5030, match: /pro\s*wireless/i, hwEffects: true, tested: true },
+    { id: "wireless",     name: "Mars68 Wireless",     pid: 0x5030, match: /wireless/i,        hwEffects: true, tested: false },
+    { id: "se",           name: "Mars68 SE",           pid: 0x5029, match: /\bse\b/i,          hwEffects: false, tested: false },
+    { id: "pro",          name: "Mars68 Pro",          pid: 0x5029, match: /pro/i,             hwEffects: true, tested: false },
+    { id: "mars68",       name: "Mars68",              pid: 0x5029, match: /mars68/i,          hwEffects: true, tested: false },
+  ];
+  const SUPPORTED_PIDS = [...new Set(MODELS.map(m => m.pid))];
+  function identifyModel(pid, productName = "") {
+    const cands = MODELS.filter(m => m.pid === pid);
+    return cands.find(m => m.match.test(productName)) || cands[cands.length - 1] || null;
+  }
+
   // ---------- เรนเดอร์ ----------
   function patternBuffer(colors) {
     const d = new Uint8ClampedArray(CW * CH * 4);
@@ -225,6 +242,7 @@
   }
 
   return { ROWS, KEYS, KB_U, PX, CW, CH, LED_SLOTS, PAL, myPattern, videoPattern, HW_EFFECTS, DIR_VALUE, DIR_LABEL, DIR_LABEL_EN, MODE_CUSTOM, CUSTOM_FX, FX_DIR_LABEL,
+    VID, USAGE_PAGE, USAGE, MODELS, SUPPORTED_PIDS, identifyModel,
     patternBuffer, sampleKeys, render, finalize, toLedBuffer,
     ALLOWED_CMDS, pktGetLed, pktVersion, pktSetLedRaw, pktSetLed, pktsCustom };
 });

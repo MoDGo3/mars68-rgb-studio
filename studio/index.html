@@ -153,7 +153,7 @@
 <body>
 <header>
   <div>
-    <h1><span id="dot" class="dot"></span>Mars68 Pro Wireless</h1>
+    <h1><span id="dot" class="dot"></span><span id="modelName">Mars68</span></h1>
     <div class="sub" id="devInfo">กำลังติดต่อเซิร์ฟเวอร์…</div>
   </div>
   <span class="spacer"></span>
@@ -584,6 +584,13 @@ async function refreshStatus(){
   try {
     const s = await api("/api/status"); ui.status = s; ui.statusAt = performance.now();
     $("dot").classList.toggle("on", s.connected);
+    // ชื่อรุ่นจริง + ซ่อนแท็บเอฟเฟกต์ในตัวถ้ารุ่นนั้นไม่มี (เช่น Mars68 SE)
+    const m = s.model; $("modelName").textContent = m ? m.name : "Mars68";
+    const noHw = !!(m && !m.hwEffects);
+    document.querySelectorAll('.tab[data-tab="rgb"],.tab[data-tab="react"]').forEach(t => t.style.display = noHw ? "none" : "");
+    if (noHw && (ui.tab === "rgb" || ui.tab === "react")) selectTab("custom");
+    if (m && !m.tested && !ui.untestedWarned) { ui.untestedWarned = true;
+      warn(T(`${m.name}: รุ่นนี้ยังไม่ได้ทดสอบกับคีย์บอร์ดจริง ถ้าไฟติดผิดปุ่มหรือไม่ทำงาน แจ้งได้ที่ GitHub`, `${m.name}: this model hasn't been tested on real hardware yet. If lights land on the wrong keys or don't work, please report it on GitHub.`)); }
     // เปลี่ยนเอฟเฟกต์ด้วยปุ่ม Fn บนคีย์บอร์ด → ให้การ์ดที่เลือกตามโหมดจริง
     const live = !s.running && s.connected && E.HW_EFFECTS.find(e => e.mode === s.ledMode);
     if (live && live.mode !== ui.hw.mode) { ui.hw.mode = live.mode;

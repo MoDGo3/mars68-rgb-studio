@@ -9,12 +9,12 @@ const PORT = 8768, ROOT = __dirname;
 // ในแอปที่ติดตั้งแล้ว โฟลเดอร์โปรแกรมเขียนไม่ได้ → แอปส่งโฟลเดอร์ข้อมูลมาทาง MARS68_DATA_DIR
 const STATE_FILE = path.join(process.env.MARS68_DATA_DIR || ROOT, "state.json");
 let onQuit = () => process.exit(0);
-const VID = 0x3151, PID = 0x5030, USAGE_PAGE = 0xFFFF, USAGE = 0x02;
+const { VID, USAGE_PAGE, USAGE } = E;   // รุ่นที่รองรับอยู่ใน E.MODELS (ตระกูล Mars68)
 const DEFAULT_HW = { mode: 1, speed: 2, bright: 4, dir: 0, full: true, color: [255, 255, 255] };
 
 // ------------------------------------------------------------ สถานะ
 const st = {
-  dev: null, version: "", ledMode: null,
+  dev: null, version: "", ledMode: null, model: null,
   running: false,          // กำลังสตรีมเฟรม (custom/image/probe)
   scene: null,             // ฉากล่าสุดที่หน้าเว็บส่งมา
   hw: null,                // เอฟเฟกต์ในตัวล่าสุดที่เลือก (ใช้คืนค่าเมื่อหยุด)
@@ -60,17 +60,18 @@ function xfer(pkt) {
 }
 function connect() {
   if (st.dev || !HID) return;
-  const info = HID.devices().find(d => d.vendorId === VID && d.productId === PID && d.usagePage === USAGE_PAGE && d.usage === USAGE);
+  const info = HID.devices().find(d => d.vendorId === VID && E.SUPPORTED_PIDS.includes(d.productId) && d.usagePage === USAGE_PAGE && d.usage === USAGE);
   if (!info) return;
   try {
     st.dev = new HID.HID(info.path);
+    st.model = E.identifyModel(info.productId, info.product || "");
     const v = xfer(E.pktVersion()); st.version = v[0] === 0x8F ? ((v[8] << 8) | v[7]).toString(16) : "?";
     readLed();
     st.needMode13 = true; st.lastSent = null;
-    log(`เชื่อมต่อคีย์บอร์ดแล้ว (เฟิร์มแวร์ ${st.version}, โหมดไฟ ${st.ledMode})`);
+    log(`เชื่อมต่อ ${st.model ? st.model.name : "คีย์บอร์ด"} แล้ว ("${info.product || "?"}", PID 0x${info.productId.toString(16)}, เฟิร์มแวร์ ${st.version}, โหมดไฟ ${st.ledMode})`);
   } catch (e) { log("เปิดอุปกรณ์ไม่ได้: " + e.message); dropDevice(); }
 }
-function dropDevice() { try { st.dev && st.dev.close(); } catch {} st.dev = null; }
+function dropDevice() { try { st.dev && st.dev.close(); } catch {} st.dev = null; st.model = null; }
 // คำตอบ GetLed ที่ถูกต้องต้องมี flag สี 7/8 — ถ้าเฟิร์มแวร์ยังยุ่ง มันจะส่งคำขอของเรากลับมาเฉย ๆ (ไบต์เป็น 0)
 const ledReplyValid = l => l[0] === 0x87 && ((l[4] & 15) === 7 || (l[4] & 15) === 8);
 // รอจนคีย์บอร์ดพร้อมรับคำสั่ง (ปกติ <1 ms, บางช่วงเฟิร์มแวร์ยุ่ง ~90 ms) — คืนคำตอบ GetLed หรือ null ถ้าหมดเวลา
@@ -95,7 +96,7 @@ function applyHw(hw) {
 }
 function stopStreaming(restore = true) {
   st.running = false; st.fps = 0;
-  if (restore && st.dev) {
+  if (restore && st.dev && (!st.model || st.model.hwEffects)) {   // รุ่นที่ไม่มีเอฟเฟกต์ในตัว (SE) ไม่ต้องคืน
     try { applyHw(st.hw || DEFAULT_HW); log("คืนเอฟเฟกต์ในตัว (โหมด " + (st.hw || DEFAULT_HW).mode + ")"); } catch (e) { log("คืนโหมดไม่ได้: " + e.message); }
   }
 }
@@ -159,7 +160,7 @@ const server = http.createServer(async (req, res) => {
   const url = req.url.split("?")[0];
   try {
     if (url === "/api/status") return send(res, 200, {
-      connected: !!st.dev, version: st.version, ledMode: st.ledMode, running: st.running, fps: +st.fps.toFixed(1),
+      connected: !!st.dev, version: st.version, model: st.model && { id: st.model.id, name: st.model.name, hwEffects: st.model.hwEffects, tested: st.model.tested }, ledMode: st.ledMode, running: st.running, fps: +st.fps.toFixed(1),
       source: st.scene && st.scene.source, hw: st.hw, t: Date.now() - st.t0, logs: st.logs.slice(0, 40) });
     if (url === "/api/state") {
       const s = fs.existsSync(STATE_FILE) ? JSON.parse(fs.readFileSync(STATE_FILE, "utf8")) : {};
@@ -178,6 +179,7 @@ const server = http.createServer(async (req, res) => {
       const hw = await readBody(req);
       const valid = E.HW_EFFECTS.some(e => e.mode === hw.mode);
       if (!valid) return send(res, 400, { error: "โหมดไม่รู้จัก" });
+      if (st.model && !st.model.hwEffects) return send(res, 400, { error: st.model.name + " ไม่มีเอฟเฟกต์ในตัว" });
       st.hw = { mode: hw.mode, speed: hw.speed & 7, bright: Math.min(4, hw.bright | 0), dir: hw.dir & 3, full: !!hw.full,
                 color: (hw.color || [255,255,255]).slice(0, 3).map(v => v & 255) };
       st.running = false; st.fps = 0;
