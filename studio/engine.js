@@ -26,6 +26,16 @@
   // ลายจากวิดีโอบันทึกหน้าจอ 2026-11-21 19:14 (ระบายในแอป CAROTMAS, สีตามพาเลตของแอป)
   const VPAL = { C: [0x38,0xFF,0xF2], R: [0xFF,0,0], U: [0,0x21,0xFF], M: [0xB1,0x1F,0xFF], Y: [0xFF,0xEA,0] };
   const VIDEO_PATTERN = ["CCCCCCCCRRRRRCC","CCRCCCCRRRRRRCC","CRRRCCCRRRRRCC","CCCCCCCCRRRCUC","CMCYRCCUUU"];
+  // ลายสีรุ้ง: ไล่สีตามแนวนอนจากแดง (ซ้าย) ผ่านเหลือง เขียว ฟ้า น้ำเงิน ม่วง กลับมาแดง (ขวา)
+  function rainbowPattern() {
+    return KEYS.map(k => { const x = (k.x0 + k.x1) / 2 / 16;
+      return hsl2rgb([x * 0.97, 1, 0.5]).map(v => Math.round(v)); });
+  }
+  // ลายธงชาติไทย: 5 แถวปุ่มพอดี 5 แถบ แดง-ขาว-น้ำเงิน-ขาว-แดง
+  function thaiFlagPattern() {
+    const rows = [[237,28,36],[255,255,255],[36,29,79],[255,255,255],[237,28,36]];
+    return KEYS.map(k => rows[k.row].slice());
+  }
   function videoPattern() { const out = []; VIDEO_PATTERN.forEach(row => [...row].forEach(ch => out.push(VPAL[ch].slice()))); return out; }
 
   // ---------- เอฟเฟกต์ในตัวของเฟิร์มแวร์ (จาก lightEffectList "ca" + ตาราง uWt ใน bundle) ----------
@@ -149,6 +159,7 @@
     { id: "rainwalk", th: "เดินกลางสายฝน",     en: "Walk in the Rain",   dirs: [] },
     { id: "pixel",    th: "พิกเซลไหล",         en: "Pixel Flow",         dirs: [] },
     { id: "cycle",    th: "วนซ้าย-ขวา",        en: "Side-to-Side Cycle", dirs: ["left","right"] },
+    { id: "flag",     th: "ธงสะบัด",           en: "Waving Flag",        dirs: ["right","left"], extra: true },
     { id: "scroll",   th: "ไฟวิ่งเลื่อนลาย",    en: "Scroll Pattern",     dirs: ["left","right"], extra: true },
     { id: "blink",    th: "กะพริบ",            en: "Blink",              dirs: [], extra: true },
     { id: "sparkle",  th: "ประกายระยิบ",        en: "Sparkle",            dirs: [], extra: true },
@@ -162,6 +173,15 @@
   const TAU = Math.PI * 2;
   const dim = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
   const hueShift = (c, dh) => { const [h, s, l] = rgb2hsl(c); return s ? hsl2rgb([h + dh, s, l]) : c; };
+  // อ่านสีเฉลี่ย 3×3 จุดรอบตำแหน่ง (x,y) ในบัฟเฟอร์ภาพ (ชนขอบแล้วหยุด ไม่วนรอบ)
+  function sampleAt(d, x, y) {
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let dy = -2; dy <= 2; dy += 2) for (let dx = -2; dx <= 2; dx += 2) {
+      const sx = Math.min(CW - 1, Math.max(0, Math.round(x + dx))), sy = Math.min(CH - 1, Math.max(0, Math.round(y + dy)));
+      const q = (sy * CW + sx) * 4; r += d[q]; g += d[q + 1]; b += d[q + 2]; n++;
+    }
+    return [r / n, g / n, b / n];
+  }
   const normDir = (d, dirs) => d === -1 ? "left" : d === 1 ? "right" : dirs.includes(d) ? d : dirs[0];
 
   function renderCustom(scene, t, cache) {
@@ -199,6 +219,12 @@
         for (let r = 0; r < 5; r++) { const row = sampleKeys(d, offs[r]); KEYS.forEach((k, i) => { if (k.row === r) out[i] = row[i]; }); }
         return out; }
       case "cycle": { const s = dir === "right" ? -1 : 1; return base.map((c, i) => hueShift(c, s * t * v * 0.15 + POS[i].x / 16 * 0.6)); }
+      case "flag": {   // ธงสะบัด: ลายโค้งขึ้นลงเป็นคลื่นที่วิ่งออกจากเสา + แสงเงาตามรอยพับผ้า
+        const d = pat(), poleRight = dir === "left";
+        return base.map((c, i) => { const p = POS[i], u = poleRight ? (16 - p.x) / 16 : p.x / 16;   // u: 0 ที่เสา → 1 ปลายธง
+          const ph = TAU * (u * 1.25 - t * v * 0.55), amp = 0.15 + 0.85 * u;
+          const col = sampleAt(d, p.x * PX, (p.y + Math.sin(ph) * 0.95 * amp) * PX);
+          return dim(col, 0.55 + 0.45 * (0.5 + 0.5 * Math.cos(ph - 0.6))); }); }
       case "scroll": { const s = dir === "right" ? 1 : -1; let u = t * sp * 0.6; if (scene.fxStep) u = Math.floor(u);
         return sampleKeys(pat(), -s * u * PX); }
       case "blink": { const on = Math.floor(t * v * 3) % 2 === 0; return base.map(c => on ? c : [0,0,0]); }
@@ -211,9 +237,18 @@
     const k = brightPct / 100;
     return frame.map(c => c.map(v => Math.max(0, Math.min(255, Math.round(v * k)))));
   }
-  function toLedBuffer(frame) {
-    const rgb = new Uint8Array(LED_SLOTS * 3);
-    frame.forEach((c, i) => { const p = KEYS[i].led * 3; rgb[p] = c[0]; rgb[p+1] = c[1]; rgb[p+2] = c[2]; });
+  // LED สว่างตามค่าที่ส่งแบบเส้นตรง แต่สีบนจอเข้ารหัสด้วย gamma ~2.2
+  // ถ้าส่งตรง ๆ ค่าต่ำจะสว่างเกิน → สีผสมจางออกพาสเทล → แปลงด้วยตาราง gamma ก่อนส่ง
+  const gammaCache = {};
+  function gammaLut(g = 2.2) {
+    const key = (+g).toFixed(2);
+    if (!gammaCache[key]) { const lut = new Uint8Array(256); for (let v = 0; v < 256; v++) lut[v] = Math.round(255 * Math.pow(v / 255, +g)); gammaCache[key] = lut; }
+    return gammaCache[key];
+  }
+  const gammaColor = (c, g) => { const lut = gammaLut(g); return [lut[c[0] | 0], lut[c[1] | 0], lut[c[2] | 0]]; };
+  function toLedBuffer(frame, gamma = 1) {
+    const rgb = new Uint8Array(LED_SLOTS * 3), lut = gammaLut(gamma);
+    frame.forEach((c, i) => { const p = KEYS[i].led * 3; rgb[p] = lut[c[0]]; rgb[p+1] = lut[c[1]]; rgb[p+2] = lut[c[2]]; });
     return rgb;
   }
 
@@ -241,8 +276,8 @@
     return out;
   }
 
-  return { ROWS, KEYS, KB_U, PX, CW, CH, LED_SLOTS, PAL, myPattern, videoPattern, HW_EFFECTS, DIR_VALUE, DIR_LABEL, DIR_LABEL_EN, MODE_CUSTOM, CUSTOM_FX, FX_DIR_LABEL,
+  return { ROWS, KEYS, KB_U, PX, CW, CH, LED_SLOTS, PAL, myPattern, videoPattern, rainbowPattern, thaiFlagPattern, HW_EFFECTS, DIR_VALUE, DIR_LABEL, DIR_LABEL_EN, MODE_CUSTOM, CUSTOM_FX, FX_DIR_LABEL,
     VID, USAGE_PAGE, USAGE, MODELS, SUPPORTED_PIDS, identifyModel,
-    patternBuffer, sampleKeys, render, finalize, toLedBuffer,
+    patternBuffer, sampleKeys, render, finalize, toLedBuffer, gammaLut, gammaColor,
     ALLOWED_CMDS, pktGetLed, pktVersion, pktSetLedRaw, pktSetLed, pktsCustom };
 });

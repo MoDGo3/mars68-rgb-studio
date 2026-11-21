@@ -24,6 +24,10 @@ It adds what the official app can't do / เพิ่มสิ่งที่แ
 - RGB effects layered over your own per-key pattern (running lights, wave, windmill …) — เอฟเฟกต์ทับลายที่ระบายเอง
 - All 15 built-in RGB effects + 4 reactive effects — เอฟเฟกต์ในตัวครบ 19 แบบ
 - Keeps running after you close the browser (background service) — ปิดเว็บแล้วไฟยังวิ่งต่อ
+- Live on-screen preview of every effect — พรีวิวเอฟเฟกต์บนหน้าจอ
+- Per-key rainbow for every RGB effect (the firmware only does it for Static) — สีรุ้งไล่ตามปุ่มได้ทุกเอฟเฟกต์
+- Waving-flag effect and ready-made patterns (rainbow, Thai flag) — เอฟเฟกต์ธงสะบัด และลายสำเร็จรูป
+- Gamma correction so keyboard colors match the screen — ปรับความสดของสีให้ตรงกับจอ
 - Thai / English UI — หน้าเว็บสองภาษา
 
 ## Run / วิธีใช้

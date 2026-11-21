@@ -73,7 +73,7 @@
   #paintBox .swatches{margin:4px 0 8px;gap:6px}
   #paintBox .sw{width:24px;height:24px}
   #paintBox .row{margin:4px 0;gap:6px}
-  #paintBox .row button,#paintBox .dirs button{padding:5px 10px;font-size:13px}
+  #paintBox .row button,#paintBox .dirs button,#paintBox select{padding:5px 10px;font-size:13px}
   @media (max-width:900px){
     .grid,.grid3,.customgrid{grid-template-columns:1fr}
     .card{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto}
@@ -204,8 +204,13 @@
           <div class="row">
             <button id="btnFillAll">เทสีทั้งหมด</button>
             <button id="btnClear">ล้างทั้งหมด</button>
-            <button id="btnPreset">โหลดลายของฉัน</button>
-            <button id="btnPresetVideo">โหลดลายจากวิดีโอ</button>
+            <select id="presetSel" aria-label="โหลดลาย">
+              <option value="">โหลดลาย…</option>
+              <option value="mine">ลายของฉัน</option>
+              <option value="video">ลายจากวิดีโอ</option>
+              <option value="rainbow">ลายสีรุ้ง</option>
+              <option value="thai">ลายธงชาติไทย</option>
+            </select>
             <button id="btnSaveJson">ส่งออก .json</button>
             <button id="btnLoadJson">นำเข้า .json</button>
             <input type="file" id="jsonFile" accept=".json,application/json" hidden>
@@ -267,6 +272,9 @@
           <p class="hint">ไล่เปิดไฟสีขาวทีละปุ่ม (กรอบเหลืองบนจอคือปุ่มที่ควรติด) ใช้ยืนยันตำแหน่งไฟ โดยเฉพาะปุ่ม <b>'</b></p>
           <div class="row"><button id="btnProbe">เริ่มไล่ทีละปุ่ม</button>
             <select id="probeMs"><option value="600">ช้า (0.6 วิ/ปุ่ม)</option><option value="250">เร็ว (0.25 วิ/ปุ่ม)</option></select></div>
+          <h3 style="margin-top:16px">ความสดของสีบนคีย์บอร์ด</h3>
+          <p class="hint">ถ้าสีบนคีย์บอร์ดดูจางกว่าบนจอ ให้เพิ่มค่านี้ ถ้าสีเข้มหรือมืดเกินไป ให้ลดลง (1.0 = ไม่แก้สี)</p>
+          <div class="row"><span class="muted">จาง</span><input type="range" id="gamma" min="1" max="3" step="0.1" value="2.2"><span class="muted">สด</span><span class="val" id="gammaV"></span></div>
           <h3 style="margin-top:16px">เซิร์ฟเวอร์เบื้องหลัง</h3>
           <p class="hint">ไฟแบบกำหนดเอง/GIF ถูกส่งโดยโปรแกรมเบื้องหลัง (server.js) ปิดหน้าเว็บได้ ไฟยังวิ่งต่อ ตราบใดที่โปรแกรมเบื้องหลังยังทำงาน
             ถ้าปิดโปรแกรมเบื้องหลัง คีย์บอร์ดจะกลับไปใช้เอฟเฟกต์ในตัวที่เลือกไว้ล่าสุด</p>
@@ -324,7 +332,7 @@ const I18N = {
   "เอฟเฟกต์ชุดนี้ทำงานในตัวคีย์บอร์ดเอง ปิดหน้าเว็บหรือปิดคอมก็ยังทำงาน": "These effects run inside the keyboard itself — they keep working after you close this page or turn off the PC.",
   "สีของไฟ": "Light color", "ความเร็ว": "Speed", "ช้า": "Slow", "เร็ว": "Fast", "ความสว่าง": "Brightness", "ปิด": "Off", "สว่าง": "Bright", "ทิศทาง": "Direction",
   "เลือกสี": "Pick a color", "คลิกหรือลากบนคีย์บอร์ดด้านบนเพื่อระบายสี": "Click or drag on the keyboard above to paint",
-  "เทสีทั้งหมด": "Fill all", "ล้างทั้งหมด": "Clear all", "โหลดลายของฉัน": "Load my pattern", "โหลดลายจากวิดีโอ": "Load pattern from video",
+  "เทสีทั้งหมด": "Fill all", "ล้างทั้งหมด": "Clear all", "โหลดลาย…": "Load pattern…", "ลายของฉัน": "My pattern", "ลายจากวิดีโอ": "Pattern from video", "ลายสีรุ้ง": "Rainbow", "ลายธงชาติไทย": "Thai flag",
   "ส่งออก .json": "Export .json", "นำเข้า .json": "Import .json",
   "เอฟเฟกต์ไฟ RGB ทับลาย": "RGB effect over the pattern", "เอฟเฟกต์": "Effect",
   "นิ่ง (ไม่มีเอฟเฟกต์)": "Static (no effect)", "ไฟวิ่ง (เลื่อนลาย)": "Running lights (scroll pattern)", "หายใจ": "Breathing",
@@ -339,7 +347,8 @@ const I18N = {
   "ทดสอบตำแหน่งไฟ": "LED position test",
   "ไล่เปิดไฟสีขาวทีละปุ่ม (กรอบเหลืองบนจอคือปุ่มที่ควรติด) ใช้ยืนยันตำแหน่งไฟ โดยเฉพาะปุ่ม": "Lights each key white in turn (the yellow outline on screen is the key that should light up) to verify LED positions — especially the key",
   "ช้า (0.6 วิ/ปุ่ม)": "Slow (0.6 s/key)", "เร็ว (0.25 วิ/ปุ่ม)": "Fast (0.25 s/key)",
-  "เซิร์ฟเวอร์เบื้องหลัง": "Background server",
+  "เซิร์ฟเวอร์เบื้องหลัง": "Background server", "ความสดของสีบนคีย์บอร์ด": "Color vividness on the keyboard", "จาง": "Washed", "สด": "Vivid",
+  "ถ้าสีบนคีย์บอร์ดดูจางกว่าบนจอ ให้เพิ่มค่านี้ ถ้าสีเข้มหรือมืดเกินไป ให้ลดลง (1.0 = ไม่แก้สี)": "If colors on the keyboard look paler than on screen, raise this; if they look too dark, lower it (1.0 = no correction).",
   "ไฟแบบกำหนดเอง/GIF ถูกส่งโดยโปรแกรมเบื้องหลัง (server.js) ปิดหน้าเว็บได้ ไฟยังวิ่งต่อ ตราบใดที่โปรแกรมเบื้องหลังยังทำงาน ถ้าปิดโปรแกรมเบื้องหลัง คีย์บอร์ดจะกลับไปใช้เอฟเฟกต์ในตัวที่เลือกไว้ล่าสุด":
     "Custom/GIF lighting is sent by the background program (server.js). You can close this page and the lights keep running as long as the background program is running. If you close it, the keyboard returns to the last built-in effect you chose.",
   "ปิดโปรแกรมเบื้องหลัง": "Stop background program", "บันทึกจากเซิร์ฟเวอร์": "Server log",
@@ -390,11 +399,13 @@ function selectTab(tab){
   $("kbNote").textContent = pane === "hw" ? T("พรีวิวโดยประมาณ — เอฟเฟกต์จริงแสดงบนคีย์บอร์ด", "Approximate preview — the real effect shows on the keyboard") : tab === "custom" ? T("คลิก/ลากเพื่อระบายสี", "Click/drag to paint") : tab === "image" && ui.imageSrc ? T("ลากเพื่อย้ายภาพ · หมุนล้อเมาส์เพื่อซูม", "Drag to move · scroll wheel to zoom") : "";
 }
 function bindVal(id, fmt){ const el = $(id), v = $(id + "V"); const f = () => v.textContent = fmt(+el.value); el.addEventListener("input", f); f(); }
-bindVal("fxSpeed", v => v); bindVal("bright", v => v + "%"); bindVal("fpsCap", v => v);
+bindVal("fxSpeed", v => v); bindVal("gamma", v => v.toFixed(1));
+const sendGamma = debounce(() => api("/api/settings", { gamma: +$("gamma").value }).catch(e => warn(e.message)), 200);
+$("gamma").addEventListener("input", () => { ui.gammaTouched = Date.now(); sendGamma(); }); bindVal("bright", v => v + "%"); bindVal("fpsCap", v => v);
 bindVal("imgSpeed", v => v + "×"); bindVal("imgScrollSpeed", v => v);
 // ---- เอฟเฟกต์ทับลาย (แท็บกำหนดเอง) ----
 const FX_ICON_KEY = { static: 1, breath: 2, neon: 3, wave: 4, starry: 6, racing: 7, blossom: 9, sine: 10, rhythm: 11, huewave: 12,
-  windmill: 15, rain: 16, rainwalk: 17, pixel: 18, cycle: 23, scroll: "blink", blink: 14, sparkle: "sparkle" };
+  windmill: 15, rain: 16, rainwalk: 17, pixel: 18, cycle: 23, scroll: "blink", blink: 14, sparkle: "sparkle", flag: "flag" };
 function fxUi(){
   const def = E.CUSTOM_FX.find(f => f.id === ui.fx) || E.CUSTOM_FX[0];
   if (def.dirs.length && !def.dirs.includes(ui.fxDir)) ui.fxDir = def.dirs[0];
@@ -429,7 +440,9 @@ function renderHwGrid(){
     b.className = ui.hw.dir === E.DIR_VALUE[d] ? "active" : ""; b.onclick = () => { ui.hw.dir = E.DIR_VALUE[d]; renderHwGrid(); sendHw(); }; $("hwDirs").appendChild(b); });
   $("hwSpeed").value = 4 - ui.hw.speed; $("hwBright").value = ui.hw.bright;
   [...$("hwSwatches").children].forEach(s => s.classList.toggle("active", s.dataset.c === (ui.hw.full ? "rainbow" : hex(ui.hw.color))));
-  $("hwColorNote").textContent = ui.hw.full ? T("โหมดสีรุ้ง (นีออน)", "Rainbow (neon) mode") : T("สี ", "Color ") + hex(ui.hw.color);
+  $("hwColorNote").textContent = !ui.hw.full ? T("สี ", "Color ") + hex(ui.hw.color)
+    : softRainbow() ? T("สีรุ้งไล่ตามปุ่ม — ส่งจากโปรแกรมเบื้องหลัง (~8 เฟรม/วินาที)", "Per-key rainbow — sent by the background program (~8 fps)")
+    : T("สีรุ้ง", "Rainbow");
 }
 (function buildHwSwatches(){
   const r = document.createElement("div"); r.className = "sw rainbow"; r.title = "สีรุ้ง (นีออน) / Rainbow (neon)"; r.dataset.c = "rainbow";
@@ -441,7 +454,10 @@ function renderHwGrid(){
 })();
 $("hwSpeed").oninput = () => { ui.hw.speed = 4 - +$("hwSpeed").value; sendHwSoon(); };
 $("hwBright").oninput = () => { ui.hw.bright = +$("hwBright").value; sendHwSoon(); };
-async function sendHw(){ try { const r = await api("/api/hw", ui.hw); if (!r.connected) warn(T("ยังไม่พบคีย์บอร์ด — ต่อสาย USB แล้วระบบจะเชื่อมต่อเอง", "Keyboard not found — plug in the USB cable and it will connect automatically")); else warn(""); } catch (e) { warn(T("ตั้งเอฟเฟกต์ไม่ได้: ", "Could not set effect: ") + e.message); } }
+async function sendHw(){ ui.hwChangedAt = Date.now(); try {
+  if (softRainbow()) { const playing = ui.status && ui.status.running && ui.status.fromHw;
+    await api("/api/scene", { scene: hwRainbowScene(), restartClock: !playing }); warn(""); refreshStatus(); return; }
+  const r = await api("/api/hw", ui.hw); if (!r.connected) warn(T("ยังไม่พบคีย์บอร์ด — ต่อสาย USB แล้วระบบจะเชื่อมต่อเอง", "Keyboard not found — plug in the USB cable and it will connect automatically")); else warn(""); } catch (e) { warn(T("ตั้งเอฟเฟกต์ไม่ได้: ", "Could not set effect: ") + e.message); } }
 const sendHwSoon = debounce(sendHw, 150);
 
 // ===================== พาเลตกำหนดเอง =====================
@@ -455,8 +471,10 @@ picker.oninput = () => { ui.brush = unhex(picker.value); [...$("swatches").child
 $("swatches").appendChild(picker); $("swatches").children[10].classList.add("active");
 $("btnFillAll").onclick = () => { ui.colors = E.KEYS.map(() => ui.brush.slice()); sceneChanged(); };
 $("btnClear").onclick = () => { ui.colors = E.KEYS.map(() => [0,0,0]); sceneChanged(); };
-$("btnPreset").onclick = () => { ui.colors = E.myPattern(); sceneChanged(); };
-$("btnPresetVideo").onclick = () => { ui.colors = E.videoPattern(); sceneChanged(); };
+$("presetSel").onchange = e => {
+  const f = { mine: E.myPattern, video: E.videoPattern, rainbow: E.rainbowPattern, thai: E.thaiFlagPattern }[e.target.value];
+  if (f) { ui.colors = f(); sceneChanged(); } e.target.value = "";
+};
 $("btnSaveJson").onclick = () => {
   const data = E.KEYS.map((k, i) => ({ key: k.label || "Space", row: k.row + 1, led: k.led, color: hex(ui.colors[i]) }));
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: "application/json" }));
@@ -584,6 +602,7 @@ async function refreshStatus(){
   try {
     const s = await api("/api/status"); ui.status = s; ui.statusAt = performance.now();
     $("dot").classList.toggle("on", s.connected);
+    if (s.gamma && Date.now() - (ui.gammaTouched || 0) > 2000 && +$("gamma").value !== s.gamma) { $("gamma").value = s.gamma; $("gammaV").textContent = s.gamma.toFixed(1); }
     // ชื่อรุ่นจริง + ซ่อนแท็บเอฟเฟกต์ในตัวถ้ารุ่นนั้นไม่มี (เช่น Mars68 SE)
     const m = s.model; $("modelName").textContent = m ? m.name : "Mars68";
     const noHw = !!(m && !m.hwEffects);
@@ -592,11 +611,13 @@ async function refreshStatus(){
     if (m && !m.tested && !ui.untestedWarned) { ui.untestedWarned = true;
       warn(T(`${m.name}: รุ่นนี้ยังไม่ได้ทดสอบกับคีย์บอร์ดจริง ถ้าไฟติดผิดปุ่มหรือไม่ทำงาน แจ้งได้ที่ GitHub`, `${m.name}: this model hasn't been tested on real hardware yet. If lights land on the wrong keys or don't work, please report it on GitHub.`)); }
     // เปลี่ยนเอฟเฟกต์ด้วยปุ่ม Fn บนคีย์บอร์ด → ให้การ์ดที่เลือกตามโหมดจริง
-    const live = !s.running && s.connected && E.HW_EFFECTS.find(e => e.mode === s.ledMode);
+    // ซิงก์เฉพาะตอนโหมดบนคีย์บอร์ด "เปลี่ยน" (เช่นกด Fn) และไม่ทับสิ่งที่เพิ่งคลิกในหน้าเว็บ (3 วินาที)
+    const changedOnDevice = s.ledMode !== ui.lastLedMode; ui.lastLedMode = s.ledMode;
+    const live = changedOnDevice && !s.running && s.connected && Date.now() - (ui.hwChangedAt || 0) > 3000 && E.HW_EFFECTS.find(e => e.mode === s.ledMode);
     if (live && live.mode !== ui.hw.mode) { ui.hw.mode = live.mode;
       if (ui.tab === "rgb" || ui.tab === "react") selectTab(live.type === 1 ? "react" : "rgb"); }
     $("devInfo").textContent = s.connected ? T(`เชื่อมต่อแล้ว · เฟิร์มแวร์ ${s.version} · โหมดไฟ ${s.ledMode}`, `Connected · firmware ${s.version} · light mode ${s.ledMode}`) : T("ไม่พบคีย์บอร์ด — ต่อสาย USB (ปิดแอป CAROTMAS ก่อน)", "Keyboard not found — connect USB (close the CAROTMAS app first)");
-    $("runInfo").textContent = s.running ? `▶ ${T("กำลังเล่น", "Playing")} ${s.source === "image" ? T("ภาพ/GIF", "image/GIF") : s.source === "probe" ? T("ทดสอบตำแหน่ง", "position test") : T("กำหนดเอง", "custom")} · ${s.fps} ${T("เฟรม/วิ", "fps")}` : T("เอฟเฟกต์ในตัวของคีย์บอร์ด", "Keyboard built-in effect");
+    $("runInfo").textContent = s.running ? `▶ ${T("กำลังเล่น", "Playing")} ${s.source === "image" ? T("ภาพ/GIF", "image/GIF") : s.source === "probe" ? T("ทดสอบตำแหน่ง", "position test") : s.fromHw ? T("เอฟเฟกต์สีรุ้งไล่ตามปุ่ม", "per-key rainbow effect") : T("กำหนดเอง", "custom")} · ${s.fps} ${T("เฟรม/วิ", "fps")}` : T("เอฟเฟกต์ในตัวของคีย์บอร์ด", "Keyboard built-in effect");
     const playing = s.running && s.source !== "probe";
     $("btnRun").textContent = playing ? T("■ หยุด", "■ Stop") : T("▶ เล่นบนคีย์บอร์ด", "▶ Play on keyboard"); $("btnRun").className = playing ? "danger" : "primary";
     $("btnProbe").textContent = s.running && s.source === "probe" ? T("หยุดไล่", "Stop test") : T("เริ่มไล่ทีละปุ่ม", "Start key-by-key test");
@@ -627,10 +648,68 @@ function imagePreview(now){
   const sc = +$("imgScroll").value, t = (now - t0) / 1000, off = sc ? -sc * t * +$("imgScrollSpeed").value * E.PX * 0.5 : 0;
   return E.finalize(E.sampleKeys(smallCx.getImageData(0, 0, E.CW, E.CH).data, off), +$("bright").value);
 }
-function hwPreview(){
-  const k = ui.hw.bright / 4;
-  return E.KEYS.map((key, i) => { if (!ui.hw.full) return ui.hw.color.map(v => v * k);
-    const h = ((key.x0 + key.x1) / 2 / 16 + (performance.now() / 4000)) % 1; return hsl(h).map(v => v * k); });
+// ---- พรีวิวเอฟเฟกต์ในตัว (จำลองบนจอ — ของจริงเฟิร์มแวร์เป็นคนเล่น) ----
+const HW_TO_FX = { 1: "static", 2: "breath", 3: "neon", 4: "wave", 6: "starry", 7: "racing", 9: "blossom", 10: "sine",
+  11: "rhythm", 12: "huewave", 15: "windmill", 16: "rain", 17: "rainwalk", 18: "pixel", 23: "cycle" };
+const HW_SPEED_TO_FX = [14, 10, 7, 4.5, 2.5];          // ความเร็วเฟิร์มแวร์ 0 = เร็วสุด … 4 = ช้าสุด
+// สีรุ้งไล่ตามปุ่ม: เฟิร์มแวร์ทำได้เฉพาะ "ไฟนิ่ง" — เอฟเฟกต์ RGB อื่นให้โปรแกรมเล่นเองแล้วส่งเป็นเฟรม
+// (เอฟเฟกต์ตอบสนองยังใช้ของเฟิร์มแวร์ เพราะโปรแกรมไม่รู้ว่ากดปุ่มไหน)
+function softRainbow(){ return ui.hw.full && ui.hw.mode !== 1 && !!HW_TO_FX[ui.hw.mode]; }
+function hwFxDir(h){ return { 4: ["right", "left", "up", "down"][h.dir], 7: h.dir ? "ccw" : "cw", 11: h.dir ? "ccw" : "cw", 12: h.dir ? "ccw" : "cw", 15: h.dir ? "ccw" : "cw" }[h.mode]; }
+function hwRainbowScene(){
+  const h = ui.hw;
+  return { source: "custom", colors: E.rainbowPattern(), fx: HW_TO_FX[h.mode], fxDir: hwFxDir(h), fxSpeed: HW_SPEED_TO_FX[h.speed] ?? 7,
+    fxStep: false, bright: Math.round(h.bright / 4 * 100), fpsCap: 8, fromHw: true };
+}
+const KEY_POS = E.KEYS.map(k => ({ x: (k.x0 + k.x1) / 2, y: k.row + 0.5 }));
+const prand = (a, b) => { const v = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453; return v - Math.floor(v); };
+// โหมด "สีรุ้ง" ของเฟิร์มแวร์ = ทั้งแป้นสีเดียวกัน แล้วเปลี่ยนสีไปเรื่อย ๆ (ผู้ใช้ยืนยันกับคีย์บอร์ดจริงแล้ว)
+// ลำดับสีอิงชุดสีตั้งต้นของแอปทางการ (LightMode.Colors.Data): แดง เขียว เหลือง น้ำเงิน ม่วงชมพู ฟ้า ขาว
+const FW_COLORS = [[255,0,0],[0,255,0],[255,255,0],[0,0,255],[255,0,255],[0,255,255],[255,255,255]];
+const mix = (a, b, f) => a.map((v, j) => v + (b[j] - v) * f);
+function fwCycleColor(phase){                              // phase เพิ่มทีละ 1 = สีถัดไป (มีช่วงเปลี่ยนสีนุ่ม ๆ 25%)
+  const n = Math.floor(phase), f = phase - n, a = FW_COLORS[n % 7], b = FW_COLORS[(n + 1) % 7];
+  return f < 0.75 ? a.slice() : mix(a, b, (f - 0.75) / 0.25);
+}
+function hwBase(t, sp){
+  const c = ui.hw.full ? fwCycleColor(t * sp * 0.05) : ui.hw.color.slice();
+  return E.KEYS.map(() => c.slice());
+}
+function hwPreview(now){
+  if (softRainbow()) { const sc = hwRainbowScene(); return E.finalize(E.render(sc, now - t0, cache), sc.bright); }
+  const h = ui.hw, k = h.bright / 4, t = (now - t0) / 1000, sp = HW_SPEED_TO_FX[h.speed] ?? 7;
+  const fxId = HW_TO_FX[h.mode];
+  let base = hwBase(t, sp);
+  if (h.mode === 3) {                                     // นีออน: ทั้งแป้นสีเดียวกัน เปลี่ยนสีต่อเนื่อง
+    const c = hsl((t * sp * 0.025) % 1);
+    return E.KEYS.map(() => c.map(v => v * k));
+  }
+  if (h.full && h.mode === 1) {                           // ไฟนิ่ง + สีรุ้ง: ไล่สีรุ้งตามแนวนอน (ผู้ใช้ยืนยันกับคีย์บอร์ดจริง)
+    return E.KEYS.map((_, i) => hsl(KEY_POS[i].x / 16).map(v => v * k));
+  }
+  if (h.full && (h.mode === 2 || h.mode === 11)) {        // หายใจ: ครบหนึ่งรอบแล้วเปลี่ยนเป็นสีถัดไป
+    const cycle = Math.floor(t * (sp / 6) * 3 / (2 * Math.PI)), c = FW_COLORS[cycle % 7];
+    base = E.KEYS.map(() => c.slice());
+  }
+  if (fxId) {
+    const dir = { 4: ["right", "left", "up", "down"][h.dir], 7: h.dir ? "ccw" : "cw", 11: h.dir ? "ccw" : "cw", 12: h.dir ? "ccw" : "cw", 15: h.dir ? "ccw" : "cw" }[h.mode];
+    const fr = E.render({ source: "custom", colors: base, fx: fxId, fxDir: dir, fxSpeed: sp }, now - t0, cache);
+    return fr.map(c => c.map(v => v * k));
+  }
+  // เอฟเฟกต์ตอบสนอง: จำลองการกดปุ่มแบบสุ่ม (ทุก ~0.5 วินาที)
+  const every = 3.2 / sp, n = Math.floor(t / every), presses = [];
+  for (let j = n; j > n - 8 && j >= 0; j--) presses.push({ key: Math.floor(prand(j, 1) * E.KEYS.length), age: t - j * every });
+  return E.KEYS.map((_, i) => {
+    let v = 0; const p = KEY_POS[i];
+    for (const ps of presses) {
+      const q = KEY_POS[ps.key], d = Math.hypot((p.x - q.x) / 1.1, p.y - q.y), a = ps.age * sp / 7;
+      if (h.mode === 5) v = Math.max(v, Math.max(0, 1 - Math.abs(d - a * 7) / 1.2) * Math.max(0, 1 - a / 1.4));        // ระลอกวงแหวนกระจายออก
+      else if (h.mode === 8) v = Math.max(v, i === ps.key ? Math.max(0, 1 - a / 1.2) : 0);                              // ปุ่มที่กดติดแล้วจางลง
+      else if (h.mode === 14) v = Math.max(v, Math.max(0, 1 - d / 2.2) * Math.max(0, 1 - a / 0.35));                    // แฟลชสั้น ๆ รอบปุ่ม
+      else if (h.mode === 19) v = Math.max(v, i === ps.key ? Math.max(0, 1 - a / 3) : 0);                               // รอยค้างนาน ค่อย ๆ จาง
+    }
+    return base[i].map(c => c * v * k);
+  });
 }
 function hsl(h){ const f = n => { const k = (n + h * 12) % 12; return 255 * (0.5 - 0.5 * Math.max(-1, Math.min(k - 3, 9 - k, 1))); }; return [f(0), f(8), f(4)]; }
 function draw(now){
@@ -638,7 +717,7 @@ function draw(now){
   if (st && st.running && st.source === "probe") {
     const t = st.t + (now - ui.statusAt); probeIdx = Math.floor(t / (+$("probeMs").value)) % E.KEYS.length;
     fr = E.KEYS.map((_, i) => i === probeIdx ? [255,255,255] : [0,0,0]);
-  } else if (ui.tab === "rgb" || ui.tab === "react") fr = hwPreview();
+  } else if (ui.tab === "rgb" || ui.tab === "react") fr = hwPreview(now);
   else if (ui.tab === "image" && ui.image) fr = imagePreview(now);
   else fr = E.finalize(E.render(currentScene(), now - t0, cache), +$("bright").value);
   const imgMode = ui.tab === "image" && !!ui.image && probeIdx < 0; kbEl.classList.toggle("imgmode", imgMode);
@@ -660,12 +739,13 @@ function draw(now){
     const sc = s.scene;
     if (sc) {
       $("bright").value = sc.bright ?? 100; $("fpsCap").value = Math.min(12, sc.fpsCap ?? 8);
-      if (sc.source === "custom") { if (sc.colors) ui.colors = sc.colors; ui.fx = sc.fx === "hue" ? "cycle" : sc.fx || "static"; ui.fxDir = sc.fxDir === -1 ? "left" : sc.fxDir === 1 ? "right" : sc.fxDir || "left";
+      if (sc.source === "custom" && !sc.fromHw) { if (sc.colors) ui.colors = sc.colors; ui.fx = sc.fx === "hue" ? "cycle" : sc.fx || "static"; ui.fxDir = sc.fxDir === -1 ? "left" : sc.fxDir === 1 ? "right" : sc.fxDir || "left";
         $("fxSpeed").value = sc.fxSpeed ?? 6; $("fxStep").checked = !!sc.fxStep; }
       if (sc.source === "image" && sc.image) { setImage(sc.image.frames.map(f => ({ dur: f.dur, data: unb64(f.data) })), sc.image.name || T("ภาพล่าสุด", "Last image"));
         $("imgSpeed").value = sc.image.speed ?? 1; $("imgScroll").value = sc.image.scroll ?? 0; $("imgScrollSpeed").value = sc.image.scrollSpeed ?? 5; }
       ["fxSpeed","bright","fpsCap","imgSpeed","imgScrollSpeed"].forEach(id => $(id).dispatchEvent(new Event("input"))); fxUi();
-      if (s.running && (sc.source === "custom" || sc.source === "image")) { selectTab(sc.source); }
+      if (s.running && sc.fromHw) selectTab("rgb");
+      else if (s.running && (sc.source === "custom" || sc.source === "image")) { selectTab(sc.source); }
       else selectTab(E.HW_EFFECTS.find(e => e.mode === ui.hw.mode)?.type === 1 ? "react" : "rgb");
     } else selectTab("rgb");
   } catch { selectTab("rgb"); }

@@ -14,7 +14,7 @@ const DEFAULT_HW = { mode: 1, speed: 2, bright: 4, dir: 0, full: true, color: [2
 
 // ------------------------------------------------------------ สถานะ
 const st = {
-  dev: null, version: "", ledMode: null, model: null,
+  dev: null, version: "", ledMode: null, model: null, gamma: 2.2,   // gamma: แก้สีให้ LED ตรงกับจอ
   running: false,          // กำลังสตรีมเฟรม (custom/image/probe)
   scene: null,             // ฉากล่าสุดที่หน้าเว็บส่งมา
   hw: null,                // เอฟเฟกต์ในตัวล่าสุดที่เลือก (ใช้คืนค่าเมื่อหยุด)
@@ -36,7 +36,7 @@ function decodeScene(s) {
 function save(rawScene) {
   try {
     const prev = fs.existsSync(STATE_FILE) ? JSON.parse(fs.readFileSync(STATE_FILE, "utf8")) : {};
-    const out = { ...prev, hw: st.hw, running: st.running };
+    const out = { ...prev, hw: st.hw, running: st.running, gamma: st.gamma };
     if (rawScene !== undefined) out.scene = rawScene;
     fs.writeFileSync(STATE_FILE, JSON.stringify(out));
   } catch (e) { log("บันทึกสถานะไม่ได้: " + e.message); }
@@ -45,7 +45,7 @@ function load() {
   try {
     if (!fs.existsSync(STATE_FILE)) return;
     const s = JSON.parse(fs.readFileSync(STATE_FILE, "utf8"));
-    st.hw = s.hw || null; st.scene = decodeScene(s.scene); st.running = !!(s.running && st.scene);
+    st.hw = s.hw || null; if (s.gamma >= 1 && s.gamma <= 3) st.gamma = s.gamma; st.scene = decodeScene(s.scene); st.running = !!(s.running && st.scene);
     if (st.running) log("กลับมาเล่นฉากล่าสุดต่อ");
   } catch (e) { log("อ่าน state.json ไม่ได้: " + e.message); }
 }
@@ -92,7 +92,7 @@ async function waitReadyAsync(maxMs = 300) {
 
 function applyHw(hw) {
   if (!st.dev) return false;
-  waitReady(); xfer(E.pktSetLed(hw)); st.ledMode = hw.mode; return true;
+  waitReady(); xfer(E.pktSetLed({ ...hw, color: E.gammaColor(hw.color || [255, 255, 255], st.gamma) })); st.ledMode = hw.mode; return true;
 }
 function stopStreaming(restore = true) {
   st.running = false; st.fps = 0;
@@ -114,7 +114,7 @@ async function loop() {
         const ready = await waitReadyAsync();
         if (!st.dev || !st.running || !st.scene) continue;
         const fr = E.finalize(E.render(st.scene, Date.now() - st.t0, st.cache), st.scene.bright ?? 100);
-        const rgb = E.toLedBuffer(fr);
+        const rgb = E.toLedBuffer(fr, st.gamma);
         if (!st.lastSent || rgb.some((v, i) => v !== st.lastSent[i])) {
           if (ready) {
             st.ledMode = ready[1];
@@ -161,7 +161,7 @@ const server = http.createServer(async (req, res) => {
   try {
     if (url === "/api/status") return send(res, 200, {
       connected: !!st.dev, version: st.version, model: st.model && { id: st.model.id, name: st.model.name, hwEffects: st.model.hwEffects, tested: st.model.tested }, ledMode: st.ledMode, running: st.running, fps: +st.fps.toFixed(1),
-      source: st.scene && st.scene.source, hw: st.hw, t: Date.now() - st.t0, logs: st.logs.slice(0, 40) });
+      source: st.scene && st.scene.source, fromHw: !!(st.scene && st.scene.fromHw), hw: st.hw, gamma: st.gamma, t: Date.now() - st.t0, logs: st.logs.slice(0, 40) });
     if (url === "/api/state") {
       const s = fs.existsSync(STATE_FILE) ? JSON.parse(fs.readFileSync(STATE_FILE, "utf8")) : {};
       return send(res, 200, { scene: s.scene || null, hw: s.hw || null, running: st.running });
@@ -185,6 +185,14 @@ const server = http.createServer(async (req, res) => {
       st.running = false; st.fps = 0;
       const ok = applyHw(st.hw); save();
       return send(res, 200, { ok, connected: !!st.dev });
+    }
+    if (req.method === "POST" && url === "/api/settings") {
+      const b = await readBody(req);
+      if (typeof b.gamma === "number" && b.gamma >= 1 && b.gamma <= 3) {
+        st.gamma = Math.round(b.gamma * 100) / 100; st.lastSent = null;              // ส่งเฟรมใหม่ด้วยค่าใหม่
+        if (!st.running && st.dev && st.hw && (!st.model || st.model.hwEffects)) { try { applyHw(st.hw); } catch {} }
+      }
+      save(); return send(res, 200, { ok: true, gamma: st.gamma });
     }
     if (req.method === "POST" && url === "/api/quit") {
       send(res, 200, { ok: true }); log("ปิดเซิร์ฟเวอร์ตามคำสั่ง");
