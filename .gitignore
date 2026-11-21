@@ -1,0 +1,12 @@
+# CAROTMAS's own (copyrighted) code extracted for research — never publish
+bundle/
+extracted/
+original/
+
+# local / generated
+studio/node_modules/
+studio/state.json
+*.log
+
+# effect icons extracted from the official app (vendor artwork) — local only
+studio/icons.js

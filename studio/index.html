@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mars68 RGB Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap">
+<style>
+  /* ธีม "โต๊ะกลางคืน": พื้นม่วงเทาเข้ม คีย์บอร์ดมืดที่ไฟเรืองแสงเป็นจุดเด่น แผงควบคุมสีกระดาษม่วงอ่อน */
+  :root{
+    --desk:#2E2A3A; --desk2:#38334A; --case:#24212E; --keycap:#3B3649; --keytext:#A9A1BD;
+    --panel:#F2EEF7; --panel2:#FFFFFF; --ink:#1F1B29; --muted:#6E6680; --line:#DDD5EA;
+    --accent:#7C5CFF; --accent-soft:#EDE7FF; --accent-ink:#fff; --live:#FFB020; --danger:#E5484D;
+    --r-sm:6px; --r-md:10px; --r-lg:16px;
+    --font:"IBM Plex Sans Thai","Leelawadee UI","Segoe UI",Tahoma,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 var(--font);color:var(--ink);background:var(--desk);min-height:100vh;
+    background-image:radial-gradient(ellipse 70% 45% at 50% 18%, var(--desk2), transparent 70%)}
+  header{display:flex;align-items:center;gap:18px;padding:14px 28px;color:#EDE9F5;flex-wrap:wrap}
+  header h1{font-size:19px;margin:0;font-weight:600;letter-spacing:.2px}
+  header .sub{font-size:12.5px;color:#B6AECB}
+  #runInfo{color:var(--live)}
+  .dot{width:9px;height:9px;border-radius:50%;background:#6E6680;display:inline-block;margin-right:9px;vertical-align:2px}
+  .dot.on{background:#3DDC97;box-shadow:0 0 0 3px rgba(61,220,151,.18)}
+  .spacer{flex:1}
+  button{font:inherit;font-size:14px;border:1px solid var(--line);border-radius:var(--r-sm);padding:7px 14px;cursor:pointer;background:var(--panel2);color:var(--ink)}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.primary:hover{filter:brightness(1.08)}
+  button.danger{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:600}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .tab:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .tab:focus:not(:focus-visible){outline:none}
+  main{max-width:1240px;margin:0 auto;padding:0 20px 28px}
+
+  /* ---- คีย์บอร์ด: ปุ่มมืด ไฟเรืองแสงตามสี ---- */
+  .kbwrap{display:flex;justify-content:center;padding:10px 0 18px;flex-direction:column;align-items:center;gap:8px}
+  .kb{background:var(--case);border-radius:18px;padding:16px;user-select:none;width:min(780px,100%);touch-action:none;
+    box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 24px 50px rgba(10,8,20,.45)}
+  .kbnote{color:#B6AECB;font-size:12.5px;min-height:18px}
+  .kbinner{position:relative}
+  .kbrow{display:flex;aspect-ratio:16/1;position:relative;z-index:1}
+  .key{position:relative;height:100%;flex:0 0 calc(var(--w) * 6.25%)}
+  .key > div{position:absolute;inset:3px;border-radius:5px;background:var(--keycap);display:flex;align-items:flex-start;justify-content:flex-start;
+    padding:3px 0 0 6px;font-size:clamp(7px,1.15vw,11px);font-weight:600;color:var(--keytext);
+    border-bottom:3px solid rgba(0,0,0,.28);transition:box-shadow .12s}
+  .key.probe > div{outline:2px solid var(--live);outline-offset:2px}
+  #kbImg{position:absolute;inset:3px;width:calc(100% - 6px);height:calc(100% - 6px);border-radius:6px;display:none;z-index:0;background:#000}
+  .kb.imgmode #kbImg{display:block}
+  .kb.imgmode{cursor:grab}
+  .kb.imgmode.dragging{cursor:grabbing}
+  .kb.imgmode .key > div{border-bottom-color:transparent;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35) !important;text-shadow:0 0 3px rgba(0,0,0,.6);color:#fff !important}
+
+  /* ---- แผงควบคุม: แท็บแนวตั้งด้านซ้าย ---- */
+  .card{background:var(--panel);border-radius:var(--r-lg);display:grid;grid-template-columns:188px minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;
+    box-shadow:0 18px 40px rgba(10,8,20,.35);overflow:hidden}
+  .tabs{grid-column:1;grid-row:1 / 3;display:flex;flex-direction:column;gap:2px;padding:16px 10px;background:#E7E1F0;border-right:1px solid var(--line)}
+  .tab{background:transparent;border:0;border-radius:var(--r-sm);text-align:left;color:var(--muted);padding:10px 12px;line-height:1.3}
+  .tab:hover{background:rgba(124,92,255,.08);color:var(--ink)}
+  .tab.active{background:var(--panel2);color:var(--ink);font-weight:600;box-shadow:inset 3px 0 0 var(--accent)}
+  .tabpane{display:none;grid-column:2;grid-row:1;padding:18px 20px 8px}
+  .tabpane.active{display:block}
+  .card > .bar{grid-column:2;grid-row:2}
+  .grid{display:grid;grid-template-columns:1fr 360px;gap:16px}
+  .grid3{display:grid;grid-template-columns:1.5fr 1fr;gap:16px}
+  .customgrid{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)}
+  .box{background:var(--panel2);border:1px solid var(--line);border-radius:var(--r-md);padding:14px 16px}
+  .box h3{margin:0 0 10px;font-size:14.5px;font-weight:600}
+  .step{display:inline-flex;width:20px;height:20px;border-radius:50%;background:var(--accent-soft);color:var(--accent);align-items:center;justify-content:center;font-size:11.5px;font-weight:700;margin-right:8px}
+  #paintBox h3{margin:0 0 4px;font-size:14px}
+  #paintBox .swatches{margin:4px 0 8px;gap:6px}
+  #paintBox .sw{width:24px;height:24px}
+  #paintBox .row{margin:4px 0;gap:6px}
+  #paintBox .row button,#paintBox .dirs button{padding:5px 10px;font-size:13px}
+  @media (max-width:900px){
+    .grid,.grid3,.customgrid{grid-template-columns:1fr}
+    .card{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto}
+    .tabs{grid-column:1;grid-row:1;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:8px}
+    .tab{white-space:nowrap}
+    .tab.active{box-shadow:inset 0 -3px 0 var(--accent)}
+    .tabpane{grid-column:1;grid-row:2}
+    .card > .bar{grid-column:1;grid-row:3}
+  }
+
+  /* ---- การ์ดเอฟเฟกต์ ---- */
+  .fxgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:8px}
+  .fxcard{background:var(--panel2);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 10px 9px;text-align:left;cursor:pointer;
+    display:grid;grid-template-columns:30px 1fr;grid-template-rows:auto auto;column-gap:9px;align-items:center}
+  .fxcard:hover{border-color:#B9A9FF}
+  .fxicon{grid-row:1 / 3;width:30px;height:30px;border-radius:var(--r-sm);background:#F1EDF8;color:var(--muted);display:flex;align-items:center;justify-content:center}
+  .fxicon svg{width:18px;height:18px}
+  .fxcard b,.fxcard span{display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fxcard b{font-size:13.5px;font-weight:600;line-height:1.35}
+  .fxcard span{font-size:11.5px;color:var(--muted);line-height:1.35}
+  .fxcard.active{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+  .fxcard.active .fxicon{background:var(--accent);color:#fff}
+
+  /* ---- ตัวควบคุม ---- */
+  .swatches{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 12px}
+  .sw{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid var(--panel2);box-shadow:0 0 0 1px var(--line)}
+  .sw.active{box-shadow:0 0 0 2px var(--ink)}
+  .sw.off{background:repeating-linear-gradient(45deg,#fff 0 4px,#E3DBEF 4px 7px)}
+  .sw.rainbow{background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red)}
+  input[type=color]{width:34px;height:30px;border:1px solid var(--line);border-radius:var(--r-sm);background:none;padding:2px;cursor:pointer}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0}
+  .row > label:first-child{min-width:92px;color:var(--muted)}
+  input[type=range]{flex:1;min-width:120px;accent-color:var(--accent)}
+  select{font:inherit;font-size:14px;padding:6px 8px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--panel2);color:var(--ink)}
+  .val{min-width:44px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+  .dirs{display:flex;gap:6px;flex-wrap:wrap}
+  .dirs button.active{background:var(--ink);border-color:var(--ink);color:#fff}
+  .muted{color:var(--muted);font-size:13px}
+  .hint{font-size:12.5px;color:var(--muted)}
+  .drop{border:1.5px dashed #B9A9FF;border-radius:var(--r-md);padding:28px;text-align:center;color:var(--muted);background:var(--panel2)}
+  .drop.over{background:var(--accent-soft)}
+  .fitbtns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 14px}
+  .fitbtns button{display:flex;align-items:center;justify-content:center;gap:8px;padding:9px}
+  .fitbtns button.active{border-color:var(--accent);background:var(--accent-soft);font-weight:600}
+  .fitbtns svg{width:22px;height:14px}
+  .pending{color:#B7791F;font-weight:600;margin-left:8px}
+  .bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:6px 20px 16px;padding:10px 14px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--r-md)}
+  .stat{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+  #log{margin-top:12px;background:var(--case);color:#CFC7E2;font:12px/1.5 Consolas,monospace;border-radius:var(--r-md);padding:10px;max-height:260px;overflow:auto;white-space:pre-wrap}
+  .langsw{display:inline-flex;border:1px solid rgba(255,255,255,.18);border-radius:var(--r-sm);padding:2px;gap:2px}
+  .langsw button{background:transparent;border:0;color:#B6AECB;padding:4px 11px;font-size:13px}
+  .langsw button.active{background:#EDE9F5;color:var(--ink);font-weight:600}
+  .warn{background:#FFF3D6;color:#7A5300;border:1px solid #F2D58A;border-radius:var(--r-md);padding:8px 12px;font-size:13px}
+
+  /* ---- จอสูงพอ: คีย์บอร์ดค้างด้านบน แถบเลื่อนเฉพาะในรายการเอฟเฟกต์ ---- */
+  @media (min-height:640px){
+    body{height:100vh;overflow:hidden;display:flex;flex-direction:column}
+    header,.kbwrap{flex:none}
+    main{flex:1;min-height:0;display:flex;flex-direction:column;width:100%}
+    .card{flex:1;min-height:0}
+    .tabpane.active{min-height:0;display:flex;flex-direction:column;overflow:hidden}
+    #pane-image.active,#pane-tools.active{overflow-y:auto}
+    #pane-hw .grid3{flex:1;min-height:0}
+    #pane-hw .grid3 > .box:first-child,#fxBox{display:flex;flex-direction:column;min-height:0}
+    #pane-hw .grid3 > .box:last-child,#paintBox{overflow-y:auto}
+    #pane-custom > .customgrid{flex:1;min-height:0}
+    .fxgrid{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;align-content:start;padding:2px 8px 6px 2px;margin:-2px -8px 0 -2px}
+  }
+  *{scrollbar-width:thin;scrollbar-color:#B9A9FF transparent}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#C9BCF5;border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:var(--accent);background-clip:padding-box}
+  @media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1><span id="dot" class="dot"></span>Mars68 Pro Wireless</h1>
+    <div class="sub" id="devInfo">กำลังติดต่อเซิร์ฟเวอร์…</div>
+  </div>
+  <span class="spacer"></span>
+  <span class="sub" id="runInfo"></span>
+  <div class="langsw" role="group" aria-label="Language">
+    <button data-lang="th">ไทย</button><button data-lang="en">English</button>
+  </div>
+</header>
+
+<main>
+  <div class="kbwrap"><div class="kb" id="kb"><div class="kbinner" id="kbInner"><canvas id="kbImg"></canvas></div></div><div class="kbnote" id="kbNote"></div></div>
+  <div class="warn" id="warn" style="display:none;margin:0 0 10px"></div>
+
+  <div class="card">
+    <div class="tabs">
+      <button class="tab active" data-tab="rgb">เอฟเฟกต์ไฟ RGB</button>
+      <button class="tab" data-tab="react">เอฟเฟกต์ไฟตอบสนอง</button>
+      <button class="tab" data-tab="custom">กำหนดเอง + เอฟเฟกต์</button>
+      <button class="tab" data-tab="image">ไฟจากภาพเคลื่อนไหว (GIF)</button>
+      <button class="tab" data-tab="tools">เครื่องมือ</button>
+    </div>
+
+    <!-- ===== เอฟเฟกต์ในตัว (RGB + ตอบสนอง ใช้แผงควบคุมร่วมกัน) ===== -->
+    <section class="tabpane active" id="pane-hw">
+      <div class="grid3">
+        <div class="box"><h3>เลือกเอฟเฟกต์</h3><div class="fxgrid" id="hwGrid"></div>
+          <p class="hint">เอฟเฟกต์ชุดนี้ทำงานในตัวคีย์บอร์ดเอง ปิดหน้าเว็บหรือปิดคอมก็ยังทำงาน</p></div>
+        <div class="box">
+          <h3>สีของไฟ</h3>
+          <div class="swatches" id="hwSwatches"></div>
+          <div class="hint" id="hwColorNote"></div>
+          <h3 style="margin-top:18px">ความเร็ว</h3>
+          <div class="row" id="hwSpeedRow"><span class="muted">ช้า</span><input type="range" id="hwSpeed" min="0" max="4" value="2"><span class="muted">เร็ว</span></div>
+          <h3 style="margin-top:14px">ความสว่าง</h3>
+          <div class="row"><span class="muted">ปิด</span><input type="range" id="hwBright" min="0" max="4" value="4"><span class="muted">สว่าง</span></div>
+          <div id="hwDirRow"><h3 style="margin-top:14px">ทิศทาง</h3><div class="dirs" id="hwDirs"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== กำหนดเอง ===== -->
+    <section class="tabpane" id="pane-custom">
+      <div class="grid customgrid">
+        <div class="box" id="paintBox">
+          <h3><span class="step">1</span>เลือกสี</h3>
+          <div class="swatches" id="swatches"></div>
+          <h3><span class="step">2</span>คลิกหรือลากบนคีย์บอร์ดด้านบนเพื่อระบายสี</h3>
+          <div class="row">
+            <button id="btnFillAll">เทสีทั้งหมด</button>
+            <button id="btnClear">ล้างทั้งหมด</button>
+            <button id="btnPreset">โหลดลายของฉัน</button>
+            <button id="btnPresetVideo">โหลดลายจากวิดีโอ</button>
+            <button id="btnSaveJson">ส่งออก .json</button>
+            <button id="btnLoadJson">นำเข้า .json</button>
+            <input type="file" id="jsonFile" accept=".json,application/json" hidden>
+          </div>
+          <h3 style="margin-top:14px"><span class="step">3</span>ความเร็ว</h3>
+          <div class="row"><span class="muted">ช้า</span><input type="range" id="fxSpeed" min="1" max="20" value="6"><span class="muted">เร็ว</span><span class="val" id="fxSpeedV"></span></div>
+          <div id="rowDir"><h3 style="margin-top:10px">ทิศทาง</h3><div class="dirs" id="fxDirs"></div></div>
+          <div class="row" id="rowStep"><label><input type="checkbox" id="fxStep"> เลื่อนทีละช่อง (ไม่ไล่สี)</label></div>
+        </div>
+        <div class="box" id="fxBox">
+          <h3>เลือกเอฟเฟกต์ทับลาย</h3>
+          <div class="fxgrid" id="fxGrid"></div>
+          <p class="hint">เอฟเฟกต์ชุดนี้ใช้สีจากลายที่คุณระบาย ส่งจากโปรแกรมเบื้องหลังทีละเฟรม (ประมาณ 8 เฟรม/วินาที)</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ภาพ / GIF ===== -->
+    <section class="tabpane" id="pane-image">
+      <input type="file" id="imgFile" accept="image/gif,image/png,image/jpeg,image/webp,image/apng" hidden>
+      <div class="drop" id="drop">
+        <button id="btnPickImg" class="primary">เลือกรูปภาพ / GIF</button>
+        <div class="hint" style="margin-top:8px">รองรับ GIF/WebP เคลื่อนไหว, PNG, JPG (ลากไฟล์มาวางได้, สูงสุด 300 เฟรม)</div>
+      </div>
+      <div id="imgEditor" style="display:none">
+        <div class="grid">
+          <div class="box">
+            <h3>รูปแบบการปรับภาพ</h3>
+            <div class="fitbtns" id="fitBtns">
+              <button data-fit="cover"><svg viewBox="0 0 22 14" fill="none" stroke="currentColor"><rect x="1" y="1" width="20" height="12" rx="1.5" stroke-width="1.5"/><rect x="3" y="3" width="16" height="8" fill="currentColor" opacity=".35" stroke="none"/></svg>Cover</button>
+              <button data-fit="contain"><svg viewBox="0 0 22 14" fill="none" stroke="currentColor"><rect x="1" y="1" width="20" height="12" rx="1.5" stroke-width="1.5"/><rect x="7" y="3" width="8" height="8" fill="currentColor" opacity=".35" stroke="none"/></svg>Contain</button>
+              <button data-fit="stretch"><svg viewBox="0 0 22 14" fill="none" stroke="currentColor"><rect x="1" y="1" width="20" height="12" rx="1.5" stroke-width="1.5"/><path d="M5 7h12M5 7l2-2M5 7l2 2M17 7l-2-2M17 7l-2 2" stroke-width="1.3"/></svg>ยืด</button>
+            </div>
+            <div class="row"><label>ความเร็วเล่น</label><input type="range" id="imgSpeed" min="0.25" max="3" step="0.25" value="1"><span class="val" id="imgSpeedV"></span></div>
+            <div class="row"><label>เลื่อนภาพ</label>
+              <select id="imgScroll"><option value="0">ไม่เลื่อน</option><option value="-1">ไปทางซ้าย ←</option><option value="1">ไปทางขวา →</option></select></div>
+            <div class="row"><label>ความเร็วเลื่อน</label><input type="range" id="imgScrollSpeed" min="1" max="20" value="5"><span class="val" id="imgScrollSpeedV"></span></div>
+          </div>
+          <div class="box">
+            <div class="hint"><span id="imgInfo"></span><span class="pending" id="imgPending"></span></div>
+            <p class="hint">ลากภาพบนแป้นพิมพ์ด้านบนเพื่อปรับตำแหน่ง และหมุนล้อเมาส์เพื่อซูม ตรวจสอบตัวอย่างแล้วกดใช้</p>
+            <h3>สเกล</h3>
+            <div class="row"><span class="muted">0.2x</span><input type="range" id="imgScale" min="0.2" max="3" step="0.01" value="1"><span class="muted">3.0x</span><span class="val" id="imgScaleV"></span></div>
+            <button id="btnImgReset">รีเซ็ตตำแหน่ง</button>
+          </div>
+        </div>
+        <div class="row" style="justify-content:flex-end;margin-top:12px">
+          <button id="btnChangeImg">เปลี่ยนรูปภาพ</button>
+          <button id="btnApplyImg" class="primary" style="min-width:120px">ใช้</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== เครื่องมือ ===== -->
+    <section class="tabpane" id="pane-tools">
+      <div class="grid">
+        <div class="box">
+          <h3>ทดสอบตำแหน่งไฟ</h3>
+          <p class="hint">ไล่เปิดไฟสีขาวทีละปุ่ม (กรอบเหลืองบนจอคือปุ่มที่ควรติด) ใช้ยืนยันตำแหน่งไฟ โดยเฉพาะปุ่ม <b>'</b></p>
+          <div class="row"><button id="btnProbe">เริ่มไล่ทีละปุ่ม</button>
+            <select id="probeMs"><option value="600">ช้า (0.6 วิ/ปุ่ม)</option><option value="250">เร็ว (0.25 วิ/ปุ่ม)</option></select></div>
+          <h3 style="margin-top:16px">เซิร์ฟเวอร์เบื้องหลัง</h3>
+          <p class="hint">ไฟแบบกำหนดเอง/GIF ถูกส่งโดยโปรแกรมเบื้องหลัง (server.js) ปิดหน้าเว็บได้ ไฟยังวิ่งต่อ ตราบใดที่โปรแกรมเบื้องหลังยังทำงาน
+            ถ้าปิดโปรแกรมเบื้องหลัง คีย์บอร์ดจะกลับไปใช้เอฟเฟกต์ในตัวที่เลือกไว้ล่าสุด</p>
+          <button id="btnQuit" class="danger">ปิดโปรแกรมเบื้องหลัง</button>
+        </div>
+        <div class="box"><h3>บันทึกจากเซิร์ฟเวอร์</h3><div id="log">—</div></div>
+      </div>
+    </section>
+
+    <div class="bar" id="playBar" style="display:none">
+      <button id="btnRun" class="primary">▶ เล่นบนคีย์บอร์ด</button>
+      <div class="row" style="margin:0;flex:1;min-width:240px"><label style="min-width:auto">ความสว่าง</label>
+        <input type="range" id="bright" min="5" max="100" value="100"><span class="val" id="brightV"></span></div>
+      <div class="row" style="margin:0;min-width:220px"><label style="min-width:auto">เฟรม/วินาที</label>
+        <input type="range" id="fpsCap" min="1" max="12" value="8"><span class="val" id="fpsCapV"></span></div>
+      <div class="hint" style="flex-basis:100%">คีย์บอร์ดรุ่นนี้อัปเดตไฟรายปุ่มได้ราว 8 ครั้ง/วินาที (ข้อจำกัดเฟิร์มแวร์) — ถ้าต้องการการเคลื่อนไหวลื่น ๆ ให้ใช้แท็บ “เอฟเฟกต์ไฟ RGB” ที่ทำงานในตัวคีย์บอร์ด</div>
+    </div>
+  </div>
+</main>
+
+<script src="engine.js"></script>
+<script src="icons.js"></script>
+<script>
+"use strict";
+const E = window.Engine, $ = id => document.getElementById(id);
+const rgbCss = c => `rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
+const hex = c => "#" + c.map(v => (v|0).toString(16).padStart(2,"0")).join("");
+const unhex = h => [1,3,5].map(i => parseInt(h.substr(i,2),16));
+
+const ui = {
+  tab: "rgb", colors: E.myPattern(), brush: [240,20,120], fx: "static", fxDir: "left",
+  xf: { fit: "cover", k: 1, ox: 0, oy: 0 }, pending: false,
+  image: null, imageSrc: null,   // image: {frames:[{dur,data}], total, ...}
+  hw: { mode: 1, speed: 2, bright: 4, dir: 0, full: true, color: [255,255,255] },
+  status: null, statusAt: 0,
+};
+
+async function api(path, body){
+  const r = await fetch(path, body === undefined ? {} : { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+  return r.json();
+}
+function warn(msg){ $("warn").style.display = msg ? "block" : "none"; $("warn").textContent = msg || ""; }
+
+// ===================== ภาษา / Language =====================
+let lang = "th"; try { lang = new URLSearchParams(location.search).get("lang") || localStorage.getItem("mars68.lang") || "th"; } catch {}
+const T = (th, en) => lang === "en" ? en : th;
+// ข้อความคงที่ใน HTML: ไทย → English
+const I18N = {
+  "กำลังติดต่อเซิร์ฟเวอร์…": "Connecting to server…",
+  "เอฟเฟกต์ไฟ RGB": "RGB Effects", "เอฟเฟกต์ไฟตอบสนอง": "Reactive Effects", "กำหนดเอง + เอฟเฟกต์": "Custom + Effects",
+  "ไฟจากภาพเคลื่อนไหว (GIF)": "Animated Image (GIF)", "เครื่องมือ": "Tools",
+  "เลือกเอฟเฟกต์": "Choose an effect", "เลือกเอฟเฟกต์ทับลาย": "Choose an effect over your pattern",
+  "เอฟเฟกต์ชุดนี้ใช้สีจากลายที่คุณระบาย ส่งจากโปรแกรมเบื้องหลังทีละเฟรม (ประมาณ 8 เฟรม/วินาที)": "These effects use the colors you painted and are sent frame by frame from the background program (about 8 fps).",
+  "เอฟเฟกต์ชุดนี้ทำงานในตัวคีย์บอร์ดเอง ปิดหน้าเว็บหรือปิดคอมก็ยังทำงาน": "These effects run inside the keyboard itself — they keep working after you close this page or turn off the PC.",
+  "สีของไฟ": "Light color", "ความเร็ว": "Speed", "ช้า": "Slow", "เร็ว": "Fast", "ความสว่าง": "Brightness", "ปิด": "Off", "สว่าง": "Bright", "ทิศทาง": "Direction",
+  "เลือกสี": "Pick a color", "คลิกหรือลากบนคีย์บอร์ดด้านบนเพื่อระบายสี": "Click or drag on the keyboard above to paint",
+  "เทสีทั้งหมด": "Fill all", "ล้างทั้งหมด": "Clear all", "โหลดลายของฉัน": "Load my pattern", "โหลดลายจากวิดีโอ": "Load pattern from video",
+  "ส่งออก .json": "Export .json", "นำเข้า .json": "Import .json",
+  "เอฟเฟกต์ไฟ RGB ทับลาย": "RGB effect over the pattern", "เอฟเฟกต์": "Effect",
+  "นิ่ง (ไม่มีเอฟเฟกต์)": "Static (no effect)", "ไฟวิ่ง (เลื่อนลาย)": "Running lights (scroll pattern)", "หายใจ": "Breathing",
+  "คลื่นความสว่าง": "Brightness wave", "สีรุ้งไหล (หมุนเฉดสี)": "Rainbow flow (hue shift)", "กะพริบ": "Blink", "ประกายระยิบ": "Sparkle",
+  "ไปทางซ้าย ←": "To the left ←", "ไปทางขวา →": "To the right →", "เลื่อนทีละช่อง (ไม่ไล่สี)": "Step one key at a time (no blending)",
+  "เลือกรูปภาพ / GIF": "Choose image / GIF",
+  "รองรับ GIF/WebP เคลื่อนไหว, PNG, JPG (ลากไฟล์มาวางได้, สูงสุด 300 เฟรม)": "Supports animated GIF/WebP, PNG, JPG (drag & drop, up to 300 frames)",
+  "รูปแบบการปรับภาพ": "Fit mode", "ยืด": "Stretch", "สเกล": "Scale", "รีเซ็ตตำแหน่ง": "Reset position", "เปลี่ยนรูปภาพ": "Change image", "ใช้": "Apply",
+  "ลากภาพบนแป้นพิมพ์ด้านบนเพื่อปรับตำแหน่ง และหมุนล้อเมาส์เพื่อซูม ตรวจสอบตัวอย่างแล้วกดใช้": "Drag the image on the keyboard above to position it and use the mouse wheel to zoom. Check the preview, then press Apply.",
+  "ความเร็วเล่น": "Playback speed", "เลื่อนภาพ": "Scroll image", "ไม่เลื่อน": "No scroll",
+  "ความเร็วเลื่อน": "Scroll speed",
+  "ทดสอบตำแหน่งไฟ": "LED position test",
+  "ไล่เปิดไฟสีขาวทีละปุ่ม (กรอบเหลืองบนจอคือปุ่มที่ควรติด) ใช้ยืนยันตำแหน่งไฟ โดยเฉพาะปุ่ม": "Lights each key white in turn (the yellow outline on screen is the key that should light up) to verify LED positions — especially the key",
+  "ช้า (0.6 วิ/ปุ่ม)": "Slow (0.6 s/key)", "เร็ว (0.25 วิ/ปุ่ม)": "Fast (0.25 s/key)",
+  "เซิร์ฟเวอร์เบื้องหลัง": "Background server",
+  "ไฟแบบกำหนดเอง/GIF ถูกส่งโดยโปรแกรมเบื้องหลัง (server.js) ปิดหน้าเว็บได้ ไฟยังวิ่งต่อ ตราบใดที่โปรแกรมเบื้องหลังยังทำงาน ถ้าปิดโปรแกรมเบื้องหลัง คีย์บอร์ดจะกลับไปใช้เอฟเฟกต์ในตัวที่เลือกไว้ล่าสุด":
+    "Custom/GIF lighting is sent by the background program (server.js). You can close this page and the lights keep running as long as the background program is running. If you close it, the keyboard returns to the last built-in effect you chose.",
+  "ปิดโปรแกรมเบื้องหลัง": "Stop background program", "บันทึกจากเซิร์ฟเวอร์": "Server log",
+  "เฟรม/วินาที": "Frames/sec", "เริ่มไล่ทีละปุ่ม": "Start key-by-key test", "▶ เล่นบนคีย์บอร์ด": "▶ Play on keyboard",
+  "คีย์บอร์ดรุ่นนี้อัปเดตไฟรายปุ่มได้ราว 8 ครั้ง/วินาที (ข้อจำกัดเฟิร์มแวร์) — ถ้าต้องการการเคลื่อนไหวลื่น ๆ ให้ใช้แท็บ “เอฟเฟกต์ไฟ RGB” ที่ทำงานในตัวคีย์บอร์ด":
+    "This keyboard can update per-key lighting about 8 times per second (firmware limit). For smooth motion, use the “RGB Effects” tab, which runs inside the keyboard.",
+};
+const norm = s => s.replace(/\s+/g, " ").trim();
+function applyLang(){
+  document.documentElement.lang = lang;
+  const walker = document.createTreeWalker(document.querySelector("main"), NodeFilter.SHOW_TEXT);
+  const nodes = [document.getElementById("devInfo").firstChild]; let n; while ((n = walker.nextNode())) nodes.push(n);
+  for (const node of nodes) {
+    if (!node || node.parentElement.closest("#kb, #log, script, .fxgrid, .dirs")) continue;
+    if (node.__th === undefined) { const k = norm(node.nodeValue); if (!I18N[k]) continue; node.__th = node.nodeValue; }
+    const k = norm(node.__th); node.nodeValue = lang === "en" ? node.__th.replace(k, I18N[k]).replace(/\s+/g, " ") : node.__th;
+  }
+  document.querySelectorAll(".langsw button").forEach(b => b.classList.toggle("active", b.dataset.lang === lang));
+  if (typeof renderHwGrid === "function") { renderHwGrid(); fxUi(); markPending(ui.pending); selectTab(ui.tab); refreshStatus(); if (ui.image) setImage(ui.image.frames, ui.image.name); }
+}
+document.querySelectorAll(".langsw button").forEach(b => b.onclick = () => { lang = b.dataset.lang; try { localStorage.setItem("mars68.lang", lang); } catch {} applyLang(); });
+function debounce(fn, ms){ let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+// ===================== คีย์บอร์ด =====================
+const kbEl = $("kb"), keyEls = [];
+E.ROWS.forEach(r => { const row = document.createElement("div"); row.className = "kbrow";
+  r.forEach(() => { const i = keyEls.length, k = E.KEYS[i], el = document.createElement("div");
+    el.className = "key"; el.style.setProperty("--w", k.w); el.dataset.i = i;
+    el.innerHTML = `<div>${k.label.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</div>`; row.appendChild(el); keyEls.push(el); });
+  $("kbInner").appendChild(row); });
+let painting = false;
+function paintKey(i){ if (ui.tab !== "custom") return; ui.colors[i] = ui.brush.slice(); sceneChanged(); }
+kbEl.addEventListener("pointerdown", e => { const k = e.target.closest(".key"); if (!k || ui.tab !== "custom") return;
+  painting = true; kbEl.setPointerCapture(e.pointerId); paintKey(+k.dataset.i); });
+kbEl.addEventListener("pointermove", e => { if (!painting) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY), k = el && el.closest(".key"); if (k) paintKey(+k.dataset.i); });
+addEventListener("pointerup", () => painting = false);
+
+// ===================== แท็บ =====================
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => selectTab(t.dataset.tab));
+function selectTab(tab){
+  ui.tab = tab;
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("active", x.dataset.tab === tab));
+  const pane = tab === "rgb" || tab === "react" ? "hw" : tab;
+  document.querySelectorAll(".tabpane").forEach(p => p.classList.toggle("active", p.id === "pane-" + pane));
+  $("playBar").style.display = tab === "custom" || tab === "image" ? "flex" : "none";
+  if (pane === "hw") renderHwGrid();
+  $("kbNote").textContent = pane === "hw" ? T("พรีวิวโดยประมาณ — เอฟเฟกต์จริงแสดงบนคีย์บอร์ด", "Approximate preview — the real effect shows on the keyboard") : tab === "custom" ? T("คลิก/ลากเพื่อระบายสี", "Click/drag to paint") : tab === "image" && ui.imageSrc ? T("ลากเพื่อย้ายภาพ · หมุนล้อเมาส์เพื่อซูม", "Drag to move · scroll wheel to zoom") : "";
+}
+function bindVal(id, fmt){ const el = $(id), v = $(id + "V"); const f = () => v.textContent = fmt(+el.value); el.addEventListener("input", f); f(); }
+bindVal("fxSpeed", v => v); bindVal("bright", v => v + "%"); bindVal("fpsCap", v => v);
+bindVal("imgSpeed", v => v + "×"); bindVal("imgScrollSpeed", v => v);
+// ---- เอฟเฟกต์ทับลาย (แท็บกำหนดเอง) ----
+const FX_ICON_KEY = { static: 1, breath: 2, neon: 3, wave: 4, starry: 6, racing: 7, blossom: 9, sine: 10, rhythm: 11, huewave: 12,
+  windmill: 15, rain: 16, rainwalk: 17, pixel: 18, cycle: 23, scroll: "blink", blink: 14, sparkle: "sparkle" };
+function fxUi(){
+  const def = E.CUSTOM_FX.find(f => f.id === ui.fx) || E.CUSTOM_FX[0];
+  if (def.dirs.length && !def.dirs.includes(ui.fxDir)) ui.fxDir = def.dirs[0];
+  $("fxGrid").innerHTML = "";
+  let n = 0;
+  E.CUSTOM_FX.forEach(f => { const c = document.createElement("div"); c.className = "fxcard" + (f.id === ui.fx ? " active" : "");
+    const tag = f.extra ? T("พิเศษ", "Extra") : T("เอฟเฟกต์", "Effect") + " " + (++n);
+    c.title = `${f.th} / ${f.en}`; c.innerHTML = `<div class="fxicon">${(window.FX_ICONS || {})[FX_ICON_KEY[f.id]] || ""}</div><b>${T(f.th, f.en)}</b><span>${tag} · ${T(f.en, f.th)}</span>`;
+    c.onclick = () => { ui.fx = f.id; fxUi(); sceneChanged(); }; $("fxGrid").appendChild(c); });
+  $("rowDir").style.display = def.dirs.length ? "" : "none";
+  $("fxDirs").innerHTML = "";
+  def.dirs.forEach(d => { const b = document.createElement("button"); b.textContent = T(E.FX_DIR_LABEL[d][0], E.FX_DIR_LABEL[d][1]);
+    b.className = d === ui.fxDir ? "active" : ""; b.onclick = () => { ui.fxDir = d; fxUi(); sceneChanged(); }; $("fxDirs").appendChild(b); });
+  $("rowStep").style.display = ui.fx === "scroll" ? "" : "none";
+}
+fxUi();
+
+// ===================== เอฟเฟกต์ในตัว =====================
+const HW_SW = [[255,0,0],[255,140,0],[255,230,0],[160,255,0],[0,255,120],[0,255,230],[60,190,255],[0,40,255],[180,30,240],[240,20,120],[255,255,255]];
+function renderHwGrid(){
+  const type = ui.tab === "react" ? 1 : 0, list = E.HW_EFFECTS.filter(e => e.type === type);
+  $("hwGrid").innerHTML = "";
+  list.forEach((e, n) => { const c = document.createElement("div"); c.className = "fxcard" + (ui.hw.mode === e.mode ? " active" : "");
+    c.title = `${e.th} / ${e.en}`; c.innerHTML = `<div class="fxicon">${(window.FX_ICONS || {})[e.mode] || ""}</div><b>${T(e.th, e.en)}</b><span>${T("เอฟเฟกต์", "Effect")} ${n + 1} · ${T(e.en, e.th)}</span>`;
+    c.onclick = () => { ui.hw.mode = e.mode; if (!e.dirs.length) ui.hw.dir = 0; else if (!e.dirs.some(d => E.DIR_VALUE[d] === ui.hw.dir)) ui.hw.dir = E.DIR_VALUE[e.dirs[0]]; renderHwGrid(); sendHw(); };
+    $("hwGrid").appendChild(c); });
+  const eff = E.HW_EFFECTS.find(e => e.mode === ui.hw.mode);
+  $("hwSpeedRow").style.opacity = eff && eff.speed ? 1 : .4; $("hwSpeed").disabled = !(eff && eff.speed);
+  $("hwDirRow").style.display = eff && eff.dirs.length ? "" : "none";
+  $("hwDirs").innerHTML = "";
+  (eff ? eff.dirs : []).forEach(d => { const b = document.createElement("button"); b.textContent = T(E.DIR_LABEL[d], E.DIR_LABEL_EN[d]);
+    b.className = ui.hw.dir === E.DIR_VALUE[d] ? "active" : ""; b.onclick = () => { ui.hw.dir = E.DIR_VALUE[d]; renderHwGrid(); sendHw(); }; $("hwDirs").appendChild(b); });
+  $("hwSpeed").value = 4 - ui.hw.speed; $("hwBright").value = ui.hw.bright;
+  [...$("hwSwatches").children].forEach(s => s.classList.toggle("active", s.dataset.c === (ui.hw.full ? "rainbow" : hex(ui.hw.color))));
+  $("hwColorNote").textContent = ui.hw.full ? T("โหมดสีรุ้ง (นีออน)", "Rainbow (neon) mode") : T("สี ", "Color ") + hex(ui.hw.color);
+}
+(function buildHwSwatches(){
+  const r = document.createElement("div"); r.className = "sw rainbow"; r.title = "สีรุ้ง (นีออน) / Rainbow (neon)"; r.dataset.c = "rainbow";
+  r.onclick = () => { ui.hw.full = true; renderHwGrid(); sendHw(); }; $("hwSwatches").appendChild(r);
+  HW_SW.forEach(c => { const s = document.createElement("div"); s.className = "sw"; s.style.background = rgbCss(c); s.dataset.c = hex(c); s.title = hex(c);
+    s.onclick = () => { ui.hw.full = false; ui.hw.color = c.slice(); renderHwGrid(); sendHw(); }; $("hwSwatches").appendChild(s); });
+  const p = document.createElement("input"); p.type = "color"; p.value = "#ffffff"; p.title = "เลือกสีเอง / Custom color";
+  p.oninput = () => { ui.hw.full = false; ui.hw.color = unhex(p.value); renderHwGrid(); sendHwSoon(); }; $("hwSwatches").appendChild(p);
+})();
+$("hwSpeed").oninput = () => { ui.hw.speed = 4 - +$("hwSpeed").value; sendHwSoon(); };
+$("hwBright").oninput = () => { ui.hw.bright = +$("hwBright").value; sendHwSoon(); };
+async function sendHw(){ try { const r = await api("/api/hw", ui.hw); if (!r.connected) warn(T("ยังไม่พบคีย์บอร์ด — ต่อสาย USB แล้วระบบจะเชื่อมต่อเอง", "Keyboard not found — plug in the USB cable and it will connect automatically")); else warn(""); } catch (e) { warn(T("ตั้งเอฟเฟกต์ไม่ได้: ", "Could not set effect: ") + e.message); } }
+const sendHwSoon = debounce(sendHw, 150);
+
+// ===================== พาเลตกำหนดเอง =====================
+const SWATCHES = [null,[255,0,0],[255,140,0],[255,230,0],[160,255,0],[0,255,120],[0,255,230],[60,190,255],[0,40,255],[180,30,240],[240,20,120],[190,40,70],[255,255,255]];
+SWATCHES.forEach(c => { const s = document.createElement("div"); s.className = "sw" + (c ? "" : " off");
+  if (c) s.style.background = rgbCss(c); s.title = c ? hex(c) : "ปิดไฟ / Off";
+  s.onclick = () => { ui.brush = c ? c.slice() : [0,0,0]; [...$("swatches").children].forEach(x => x.classList && x.classList.remove("active")); s.classList.add("active"); };
+  $("swatches").appendChild(s); });
+const picker = document.createElement("input"); picker.type = "color"; picker.value = "#f01478"; picker.title = "เลือกสีเอง / Custom color";
+picker.oninput = () => { ui.brush = unhex(picker.value); [...$("swatches").children].forEach(x => x.classList && x.classList.remove("active")); };
+$("swatches").appendChild(picker); $("swatches").children[10].classList.add("active");
+$("btnFillAll").onclick = () => { ui.colors = E.KEYS.map(() => ui.brush.slice()); sceneChanged(); };
+$("btnClear").onclick = () => { ui.colors = E.KEYS.map(() => [0,0,0]); sceneChanged(); };
+$("btnPreset").onclick = () => { ui.colors = E.myPattern(); sceneChanged(); };
+$("btnPresetVideo").onclick = () => { ui.colors = E.videoPattern(); sceneChanged(); };
+$("btnSaveJson").onclick = () => {
+  const data = E.KEYS.map((k, i) => ({ key: k.label || "Space", row: k.row + 1, led: k.led, color: hex(ui.colors[i]) }));
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: "application/json" }));
+  a.download = "mars68_pattern.json"; a.click(); };
+$("btnLoadJson").onclick = () => $("jsonFile").click();
+$("jsonFile").onchange = async e => { try { const d = JSON.parse(await e.target.files[0].text());
+  d.forEach(x => { const i = E.KEYS.findIndex(k => k.led === x.led); if (i >= 0) ui.colors[i] = unhex(x.color); }); sceneChanged();
+  } catch (err) { warn(T("นำเข้าไม่ได้: ", "Import failed: ") + err.message); } e.target.value = ""; };
+["fxSpeed","fxStep","bright","fpsCap","imgSpeed","imgScroll","imgScrollSpeed"].forEach(id => $(id).addEventListener("input", () => sceneChanged()));
+
+// ===================== ภาพ/GIF =====================
+$("btnPickImg").onclick = () => $("imgFile").click();
+$("imgFile").onchange = e => { if (e.target.files[0]) loadImage(e.target.files[0]); e.target.value = ""; };
+const drop = $("drop");
+drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) loadImage(f); });
+// ---- ปรับภาพ: รูปแบบ / สเกล / ลาก / ซูม ----
+function markPending(v){ ui.pending = v; $("imgPending").textContent = v ? T("รอใช้การเปลี่ยนแปลง", "Changes not applied") : ""; }
+function xfChanged(){ $("imgScale").value = ui.xf.k; $("imgScaleV").textContent = ui.xf.k.toFixed(2) + "×";
+  [...$("fitBtns").children].forEach(b => b.classList.toggle("active", b.dataset.fit === ui.xf.fit)); if (ui.imageSrc) markPending(true); }
+[...$("fitBtns").children].forEach(b => b.onclick = () => { ui.xf.fit = b.dataset.fit; xfChanged(); });
+$("imgScale").addEventListener("input", () => { ui.xf.k = +$("imgScale").value; xfChanged(); });
+xfChanged();
+$("btnImgReset").onclick = () => { ui.xf = { fit: ui.xf.fit, k: 1, ox: 0, oy: 0 }; xfChanged(); };
+$("btnChangeImg").onclick = () => $("imgFile").click();
+$("btnApplyImg").onclick = async () => {
+  if (!ui.image) return warn(T("ยังไม่ได้เลือกรูป", "No image selected yet"));
+  if (ui.imageSrc) rasterize(ui.imageSrc);
+  await pushScene(true); markPending(false); refreshStatus(); };
+let drag = null;
+kbEl.addEventListener("pointerdown", e => { if (ui.tab !== "image" || !ui.imageSrc) return;
+  drag = { x: e.clientX, y: e.clientY }; kbEl.setPointerCapture(e.pointerId); kbEl.classList.add("dragging"); });
+kbEl.addEventListener("pointermove", e => { if (!drag) return; const c = $("kbImg");
+  ui.xf.ox += (e.clientX - drag.x) / c.clientWidth; ui.xf.oy += (e.clientY - drag.y) / c.clientHeight; drag = { x: e.clientX, y: e.clientY }; xfChanged(); });
+addEventListener("pointerup", () => { if (drag) { drag = null; kbEl.classList.remove("dragging"); } });
+kbEl.addEventListener("wheel", e => { if (ui.tab !== "image" || !ui.imageSrc) return; e.preventDefault();
+  ui.xf.k = Math.min(3, Math.max(0.2, ui.xf.k * Math.exp(-e.deltaY * 0.0012))); xfChanged(); }, { passive: false });
+// วาดภาพหนึ่งเฟรมลงพื้นที่ W×H ตามรูปแบบ/สเกล/ตำแหน่ง
+function drawXf(cx, bitmap, W, H, xf){
+  cx.fillStyle = "#000"; cx.fillRect(0, 0, W, H);
+  const bw = bitmap.width, bh = bitmap.height; let sx = W / bw, sy = H / bh;
+  if (xf.fit === "cover") sx = sy = Math.max(sx, sy); else if (xf.fit === "contain") sx = sy = Math.min(sx, sy);
+  const dw = bw * sx * xf.k, dh = bh * sy * xf.k;
+  cx.imageSmoothingQuality = "high"; cx.drawImage(bitmap, (W - dw) / 2 + xf.ox * W, (H - dh) / 2 + xf.oy * H, dw, dh);
+}
+
+async function loadImage(file){
+  $("imgInfo").textContent = T("กำลังอ่าน ", "Reading ") + file.name + " …";
+  try {
+    let src = [];
+    // ภาพเคลื่อนไหว (GIF/WebP/APNG) ใช้ ImageDecoder อ่านทีละเฟรม — ภาพนิ่ง/กรณีล้ม ใช้ createImageBitmap
+    const animType = /image\/(gif|webp|apng)/.test(file.type) || /\.(gif|webp|apng)$/i.test(file.name);
+    if (animType && "ImageDecoder" in window) {
+      const type = file.type || (/\.gif$/i.test(file.name) ? "image/gif" : /\.webp$/i.test(file.name) ? "image/webp" : "image/apng");
+      try {
+        if (!(await ImageDecoder.isTypeSupported(type))) throw new Error("unsupported");
+        const dec = new ImageDecoder({ data: await file.arrayBuffer(), type });
+        await dec.tracks.ready; const n = Math.min(dec.tracks.selectedTrack.frameCount || 1, 300);
+        for (let i = 0; i < n; i++) { const { image } = await dec.decode({ frameIndex: i });
+          src.push({ bitmap: await createImageBitmap(image), dur: Math.max(20, (image.duration ?? 100000) / 1000) }); image.close(); }
+        dec.close();
+      } catch { src = []; }
+    }
+    if (!src.length) src.push({ bitmap: await createImageBitmap(file), dur: 1000 });
+    ui.imageSrc = { frames: src, name: file.name, total: src.reduce((a, f) => a + f.dur, 0) || 1 };
+    ui.xf = { fit: "cover", k: 1, ox: 0, oy: 0 };
+    rasterize(ui.imageSrc); selectTab("image"); xfChanged(); markPending(true); warn("");
+  } catch (err) {
+    // เปิดไม่ได้ → ล้างภาพเก่า กันการกด "ใช้" แล้วส่งภาพเดิมไปโดยไม่รู้ตัว
+    ui.image = null; ui.imageSrc = null; markPending(false);
+    $("imgEditor").style.display = "none"; $("drop").style.display = "";
+    $("imgInfo").textContent = ""; warn(T("เปิดไฟล์ไม่ได้: ", "Could not open file: ") + file.name + " (" + err.message + ")");
+  }
+}
+function rasterize(src){
+  const cv = new OffscreenCanvas(E.CW, E.CH), cx = cv.getContext("2d", { willReadFrequently: true });
+  const frames = src.frames.map(({ bitmap, dur }) => { drawXf(cx, bitmap, E.CW, E.CH, ui.xf); return { data: cx.getImageData(0, 0, E.CW, E.CH).data, dur }; });
+  setImage(frames, src.name);
+}
+function setImage(frames, name){
+  ui.image = { frames, total: frames.reduce((a, f) => a + f.dur, 0) || 1, name };
+  $("drop").style.display = "none"; $("imgEditor").style.display = "";
+  $("imgInfo").textContent = `${name} · ${frames.length} ${T("เฟรม", "frames")}` + (frames.length > 1 ? ` · ${T("ยาว", "length")} ${(ui.image.total/1000).toFixed(2)} ${T("วินาที", "s")}` : T(" · ภาพนิ่ง", " · still image"));
+}
+function b64(u8){ let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+function unb64(s){ const b = atob(s), u = new Uint8ClampedArray(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+
+// ===================== ฉาก (scene) =====================
+function currentScene(){
+  const base = { bright: +$("bright").value, fpsCap: +$("fpsCap").value };
+  if (ui.tab === "image" && ui.image) return { ...base, source: "image", image: { frames: ui.image.frames, total: ui.image.total, name: ui.image.name,
+    speed: +$("imgSpeed").value, scroll: +$("imgScroll").value, scrollSpeed: +$("imgScrollSpeed").value } };
+  return { ...base, source: "custom", colors: ui.colors, fx: ui.fx, fxDir: ui.fxDir, fxSpeed: +$("fxSpeed").value, fxStep: $("fxStep").checked };
+}
+function serialize(scene){
+  if (scene.source !== "image") return scene;
+  return { ...scene, image: { ...scene.image, frames: scene.image.frames.map(f => ({ dur: f.dur, data: b64(f.data) })) } };
+}
+let lastImageSent = null;
+async function pushScene(restartClock = false){
+  const s = currentScene();
+  try { await api("/api/scene", { scene: serialize(s), restartClock }); warn(""); } catch (e) { warn(T("ส่งไปเซิร์ฟเวอร์ไม่ได้: ", "Could not send to server: ") + e.message); }
+}
+const pushSoon = debounce(pushScene, 250);
+function sceneChanged(){
+  try { localStorage.setItem("mars68.colors", JSON.stringify(ui.colors)); } catch {}
+  const st = ui.status;
+  if (st && st.running && (st.source === "custom" || st.source === "image") && (ui.tab === "custom" || ui.tab === "image")) pushSoon();
+}
+$("btnRun").onclick = async () => {
+  if (ui.status && ui.status.running && ui.status.source !== "probe") { await api("/api/stop", {}).catch(e => warn(e.message)); }
+  else { if (ui.tab === "image" && !ui.image) return warn(T("ยังไม่ได้เลือกรูป", "No image selected yet")); await pushScene(true); }
+  refreshStatus();
+};
+$("btnProbe").onclick = async () => {
+  if (ui.status && ui.status.running && ui.status.source === "probe") await api("/api/stop", {});
+  else await api("/api/scene", { scene: { source: "probe", probeMs: +$("probeMs").value, fpsCap: 30, bright: 100 }, restartClock: true });
+  refreshStatus();
+};
+$("btnQuit").onclick = async () => { if (!confirm(T("ปิดโปรแกรมเบื้องหลัง? ไฟกำหนดเอง/GIF จะหยุด", "Stop the background program? Custom/GIF lighting will stop."))) return; await api("/api/quit", {}).catch(() => {}); setTimeout(refreshStatus, 400); };
+
+// ===================== สถานะจากเซิร์ฟเวอร์ =====================
+async function refreshStatus(){
+  try {
+    const s = await api("/api/status"); ui.status = s; ui.statusAt = performance.now();
+    $("dot").classList.toggle("on", s.connected);
+    // เปลี่ยนเอฟเฟกต์ด้วยปุ่ม Fn บนคีย์บอร์ด → ให้การ์ดที่เลือกตามโหมดจริง
+    const live = !s.running && s.connected && E.HW_EFFECTS.find(e => e.mode === s.ledMode);
+    if (live && live.mode !== ui.hw.mode) { ui.hw.mode = live.mode;
+      if (ui.tab === "rgb" || ui.tab === "react") selectTab(live.type === 1 ? "react" : "rgb"); }
+    $("devInfo").textContent = s.connected ? T(`เชื่อมต่อแล้ว · เฟิร์มแวร์ ${s.version} · โหมดไฟ ${s.ledMode}`, `Connected · firmware ${s.version} · light mode ${s.ledMode}`) : T("ไม่พบคีย์บอร์ด — ต่อสาย USB (ปิดแอป CAROTMAS ก่อน)", "Keyboard not found — connect USB (close the CAROTMAS app first)");
+    $("runInfo").textContent = s.running ? `▶ ${T("กำลังเล่น", "Playing")} ${s.source === "image" ? T("ภาพ/GIF", "image/GIF") : s.source === "probe" ? T("ทดสอบตำแหน่ง", "position test") : T("กำหนดเอง", "custom")} · ${s.fps} ${T("เฟรม/วิ", "fps")}` : T("เอฟเฟกต์ในตัวของคีย์บอร์ด", "Keyboard built-in effect");
+    const playing = s.running && s.source !== "probe";
+    $("btnRun").textContent = playing ? T("■ หยุด", "■ Stop") : T("▶ เล่นบนคีย์บอร์ด", "▶ Play on keyboard"); $("btnRun").className = playing ? "danger" : "primary";
+    $("btnProbe").textContent = s.running && s.source === "probe" ? T("หยุดไล่", "Stop test") : T("เริ่มไล่ทีละปุ่ม", "Start key-by-key test");
+    $("log").textContent = s.logs.join("\n") || "—";
+  } catch {
+    ui.status = null; $("dot").classList.remove("on");
+    $("devInfo").textContent = T("ติดต่อโปรแกรมเบื้องหลังไม่ได้ — ดับเบิลคลิก start.bat", "Can't reach the background program — double-click start.bat");
+  }
+}
+setInterval(refreshStatus, 1000);
+
+// ===================== พรีวิว =====================
+const cache = {}, t0 = performance.now();
+const smallCv = new OffscreenCanvas(E.CW, E.CH), smallCx = smallCv.getContext("2d", { willReadFrequently: true }), smallImg = new ImageData(E.CW, E.CH);
+function frameAt(list, total, tMs){ let tt = (tMs * +$("imgSpeed").value) % total; for (const f of list) { if (tt < f.dur) return f; tt -= f.dur; } return list[0]; }
+// พรีวิวภาพใต้ปุ่ม + สีที่แต่ละปุ่มจะได้
+function imagePreview(now){
+  const cv = $("kbImg"), dpr = devicePixelRatio || 1, W = Math.round(cv.clientWidth * dpr), H = Math.round(cv.clientHeight * dpr);
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  const cx = cv.getContext("2d");
+  if (ui.imageSrc) {
+    const f = frameAt(ui.imageSrc.frames, ui.imageSrc.total, now - t0);
+    drawXf(cx, f.bitmap, W, H, ui.xf); drawXf(smallCx, f.bitmap, E.CW, E.CH, ui.xf);
+  } else {
+    const f = frameAt(ui.image.frames, ui.image.total, now - t0); smallImg.data.set(f.data); smallCx.putImageData(smallImg, 0, 0);
+    cx.imageSmoothingEnabled = false; cx.drawImage(smallCv, 0, 0, W, H);
+  }
+  const sc = +$("imgScroll").value, t = (now - t0) / 1000, off = sc ? -sc * t * +$("imgScrollSpeed").value * E.PX * 0.5 : 0;
+  return E.finalize(E.sampleKeys(smallCx.getImageData(0, 0, E.CW, E.CH).data, off), +$("bright").value);
+}
+function hwPreview(){
+  const k = ui.hw.bright / 4;
+  return E.KEYS.map((key, i) => { if (!ui.hw.full) return ui.hw.color.map(v => v * k);
+    const h = ((key.x0 + key.x1) / 2 / 16 + (performance.now() / 4000)) % 1; return hsl(h).map(v => v * k); });
+}
+function hsl(h){ const f = n => { const k = (n + h * 12) % 12; return 255 * (0.5 - 0.5 * Math.max(-1, Math.min(k - 3, 9 - k, 1))); }; return [f(0), f(8), f(4)]; }
+function draw(now){
+  const st = ui.status; let fr, probeIdx = -1;
+  if (st && st.running && st.source === "probe") {
+    const t = st.t + (now - ui.statusAt); probeIdx = Math.floor(t / (+$("probeMs").value)) % E.KEYS.length;
+    fr = E.KEYS.map((_, i) => i === probeIdx ? [255,255,255] : [0,0,0]);
+  } else if (ui.tab === "rgb" || ui.tab === "react") fr = hwPreview();
+  else if (ui.tab === "image" && ui.image) fr = imagePreview(now);
+  else fr = E.finalize(E.render(currentScene(), now - t0, cache), +$("bright").value);
+  const imgMode = ui.tab === "image" && !!ui.image && probeIdx < 0; kbEl.classList.toggle("imgmode", imgMode);
+  keyEls.forEach((el, i) => { const c = fr[i], inner = el.firstChild, dark = (c[0] + c[1] + c[2]) < 8;
+    inner.style.background = imgMode ? `rgba(${c[0]},${c[1]},${c[2]},0.45)` : dark ? "var(--keycap)" : rgbCss(c);
+    // ไฟเรืองแสงรอบปุ่มตามสี (เหมือน LED จริงบนเคสมืด)
+    inner.style.boxShadow = imgMode || dark ? "none" : `0 0 12px rgba(${c[0]|0},${c[1]|0},${c[2]|0},0.55), inset 0 1px 0 rgba(255,255,255,.35)`;
+    inner.style.color = dark ? "var(--keytext)" : (c[0] * .3 + c[1] * .59 + c[2] * .11) > 140 ? "#1F1B29" : "#fff";
+    el.classList.toggle("probe", i === probeIdx); });
+  requestAnimationFrame(draw);
+}
+
+// ===================== เริ่มต้น: โหลดสถานะเดิมจากเซิร์ฟเวอร์ =====================
+(async function init(){
+  try { const c = JSON.parse(localStorage.getItem("mars68.colors")); if (Array.isArray(c) && c.length === E.KEYS.length) ui.colors = c; } catch {}
+  try {
+    const s = await api("/api/state");
+    if (s.hw) ui.hw = { ...ui.hw, ...s.hw };
+    const sc = s.scene;
+    if (sc) {
+      $("bright").value = sc.bright ?? 100; $("fpsCap").value = Math.min(12, sc.fpsCap ?? 8);
+      if (sc.source === "custom") { if (sc.colors) ui.colors = sc.colors; ui.fx = sc.fx === "hue" ? "cycle" : sc.fx || "static"; ui.fxDir = sc.fxDir === -1 ? "left" : sc.fxDir === 1 ? "right" : sc.fxDir || "left";
+        $("fxSpeed").value = sc.fxSpeed ?? 6; $("fxStep").checked = !!sc.fxStep; }
+      if (sc.source === "image" && sc.image) { setImage(sc.image.frames.map(f => ({ dur: f.dur, data: unb64(f.data) })), sc.image.name || T("ภาพล่าสุด", "Last image"));
+        $("imgSpeed").value = sc.image.speed ?? 1; $("imgScroll").value = sc.image.scroll ?? 0; $("imgScrollSpeed").value = sc.image.scrollSpeed ?? 5; }
+      ["fxSpeed","bright","fpsCap","imgSpeed","imgScrollSpeed"].forEach(id => $(id).dispatchEvent(new Event("input"))); fxUi();
+      if (s.running && (sc.source === "custom" || sc.source === "image")) { selectTab(sc.source); }
+      else selectTab(E.HW_EFFECTS.find(e => e.mode === ui.hw.mode)?.type === 1 ? "react" : "rgb");
+    } else selectTab("rgb");
+  } catch { selectTab("rgb"); }
+  applyLang();
+  await refreshStatus();
+  requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>
